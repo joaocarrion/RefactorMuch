@@ -4,3 +4,7 @@ Current features:
 * Detects files that moved in the directory tree
 * Detects left/right only files
 * Summon winmerge to diff the files or vscode to view
+* Auto-compare files ignoring line chances, {} character positions to determine if they've changed
+
+## Future Work
+* Detect class renames and look-a-like files
