@@ -1,15 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
+using RefactorMuch.Parse;
 
-namespace InteractiveMerge.Controls
+namespace RefactorMuch.Controls
 {
   public partial class MovedPath : UserControl
   {
@@ -19,8 +13,37 @@ namespace InteractiveMerge.Controls
     public MovedPath()
     {
       InitializeComponent();
+      lblPercent.Text = "100%";
     }
-    
+
+    private FileCompareData left = null;
+    private FileCompareData right = null;
+
+    public FileCompareData LeftFile {
+      get { return left; }
+      set {
+        left = value;
+        LeftPath = left.localPath;
+        Filename = left.name;
+      }
+    }
+
+    public FileCompareData RightFile {
+      get { return right; }
+      set {
+        right = value;
+        RightPath = right.localPath;
+        Filename = right.name;
+      }
+    }
+
+    public float Similarity {
+      get => float.Parse(lblPercent.Text.Replace("%", ""));
+      set {
+        lblPercent.Text = $"{value:00}%";
+      }
+    }
+
     public string LeftPath { get => lbLeftPath.Text; set { lbLeftPath.Text = value; toolTip1.SetToolTip(lbLeftPath, value); } }
     public string RightPath { get => lbRightPath.Text; set { lbRightPath.Text = value; toolTip1.SetToolTip(lbRightPath, value); } }
     public string Filename { get => lbFilename.Text; set { lbFilename.Text = value; toolTip1.SetToolTip(lbFilename, value); } }

@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace InteractiveMerge.Controls
+namespace RefactorMuch.Controls
 {
   public partial class TaskProgress : UserControl
   {

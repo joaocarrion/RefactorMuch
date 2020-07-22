@@ -1,75 +1,70 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using InteractiveMerge.Configuration;
+using RefactorMuch.Configuration;
 using System.IO;
-using InteractiveMerge.Parse;
-using System.Reflection;
-using System.Drawing.Text;
-using InteractiveMerge.Controls;
+using RefactorMuch.Parse;
+using RefactorMuch.Controls;
+using Newtonsoft.Json.Linq;
 
-namespace InteractiveMerge
+namespace RefactorMuch
 {
   public partial class DirectoryBrowse : UserControl
   {
-    public delegate void FinishedParsing();
-
-    //private ConfigData dbConfiguration;
     private DirectoryCompare compare;
-    //private DictionaryProperty configuration;
-    private KeyValuePair<string, Property>[] propertiesInitializer = new KeyValuePair<string, Property>[]
-    {
-      new KeyValuePair<string, Property>("lastLeftDir", new StringProperty("")),
-      new KeyValuePair<string, Property>("lastRightDir", new StringProperty("")),
-      new KeyValuePair<string, Property>("recentList", new ArrayProperty()),
-      new KeyValuePair<string, Property>("filterExtensions", new ArrayProperty(new object[] { "*.cs" })),
-      new KeyValuePair<string, Property>("fileFilter", new ArrayProperty())
-    };
+    private ConfigData config;
+    private JObject doc;
 
-    private ArrayProperty recentList, filterExtentions, recentFilter;
-
+    public delegate void FinishedParsing();
     public FinishedParsing OnFinishedParsing { get; set; }
+
+    public Dictionary<string, object> properties = new Dictionary<string, object>();
 
     public DirectoryBrowse()
     {
       InitializeComponent();
-
-      //dbConfiguration = new ConfigData(Application.LocalUserAppDataPath + "/app.config");
-      //var properties = dbConfiguration.config;
-      //if (!properties.ContainsKey(Name))
-      //  properties.Add(Name, configuration = new DictionaryProperty());
-      //else
-      //  configuration = (DictionaryProperty)properties[Name];
     }
 
     private void DirectoryBrowse_Load(object sender, EventArgs e)
     {
-      //LoadProps();
+      config = new ConfigData(Application.LocalUserAppDataPath + "\\app.config");
+      doc = config.doc;
+      LoadProps();
     }
 
-    //private void LoadProps()
-    //{
-    //  foreach (var kv in propertiesInitializer)
-    //    if (!configuration.ContainsKey(kv.Key))
-    //      configuration[kv.Key] = kv.Value;
+    private void LoadProps()
+    {
+      var ll = doc.Value<string>("lastLeft");
+      var lr = doc.Value<string>("lastRight");
+      var listItems = doc.Value<string []>("lastItems");
 
-    //  recentList = (ArrayProperty)configuration["recentList"];
-    //  filterExtentions = (ArrayProperty)configuration["filterExtensions"];
-    //  recentFilter = (ArrayProperty)configuration["fileFilter"];
+      if (ll != null)
+        cbLeftDirectory.Text = ll;
+      if (lr != null)
+        cbRightDirectory.Text = lr;
+      
+      if (listItems != null)
+      {
+        cbLeftDirectory.Items.AddRange(listItems);
+        cbRightDirectory.Items.AddRange(listItems);
+      }
+    }
 
-    //  cbLeftDirectory.Items.AddRange(recentList.ToArray());
-    //  cbRightDirectory.Items.AddRange(recentList.ToArray());
+    private void ConfigSave()
+    {
+      doc.Add("lastLeft", cbLeftDirectory.Text);
+      doc.Add("lastRight", cbRightDirectory.Text);
+      
+      var set = new HashSet<string>();
+      foreach (var item in cbLeftDirectory.Items)
+        set.Add(item.ToString());
+      foreach (var item in cbRightDirectory.Items)
+        set.Add(item.ToString());
+      doc.Add("lastItems", new JArray(set.ToArray()));
 
-    //  // TODO: fill last entry and when start/refresh are pressed, update
-    //  cbLeftDirectory.Text = configuration["lastLeftDir"];
-    //  cbRightDirectory.Text = configuration["lastRightDir"];
-    //}
+      config.Save();
+    }
 
     private void btBrowseLeft_Click(object sender, EventArgs e)
     {
@@ -92,29 +87,15 @@ namespace InteractiveMerge
         MessageBox.Show("Left path is not a directory");
       else
       {
-        //configuration["lastLeftDir"].value = cbLeftDirectory.Text;
-        //configuration["lastRightDir"].value = cbRightDirectory.Text;
-        //cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
-        //cbRightDirectory.Items.Add(cbRightDirectory.Text);
+        cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
+        cbRightDirectory.Items.Add(cbRightDirectory.Text);
+        ConfigSave();
 
-        //ConfigSave();
         flowPanel.Controls.Clear();
         Compare();
       }
     }
 
-    private void ConfigSave()
-    {
-      foreach (var item in cbLeftDirectory.Items)
-        if (!recentList.Contains(item))
-          recentList.Add(item);
-
-      foreach (var item in cbRightDirectory.Items)
-        if (!recentList.Contains(item))
-          recentList.Add(item);
-
-      //dbConfiguration.Save();
-    }
 
     private void updateProgess_Tick(object sender, EventArgs e)
     {
@@ -134,8 +115,8 @@ namespace InteractiveMerge
       compare = new DirectoryCompare(leftPath, rightPath, exts);
       await compare.Parse();
 
-      var left = compare.Left;
-      var right = compare.Right;
+      var left = compare.LeftFiles;
+      var right = compare.RightFiles;
 
       // TODO: Move into file comparison
       foreach (string file in compare.Filenames)
@@ -156,29 +137,36 @@ namespace InteractiveMerge
             AddMoved(lFile, rFile);
         }
         else if (lFile != null && lFile.parsed)
-          AddSideOnly(lFile);
+          AddSideOnly(lFile, true);
         else if (rFile != null && rFile.parsed)
-          AddSideOnly(rFile);
+          AddSideOnly(rFile, false);
+      }
+
+      // TODO: Enable/disable cross compare
+      foreach (var crossCompare in compare.CrossList)
+      {
+        AddMoved(crossCompare.left, crossCompare.right, crossCompare.similarity);
       }
     }
 
-    private void AddSideOnly(FileCompareData fileCompare)
+    private void AddSideOnly(FileCompareData fileCompare, bool isLeft)
     {
       LeftOnly leftOnly = new LeftOnly();
-      leftOnly.LeftPath = fileCompare.path;
-      leftOnly.Filename = fileCompare.name;
+      leftOnly.LeftFile = fileCompare;
+      leftOnly.IsLeft = isLeft;
+      leftOnly.RightRootPath = isLeft ? compare.RightPath : compare.LeftPath;
       leftOnly.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
 
       flowPanel.Controls.Add(leftOnly);
       leftOnly.Width = flowPanel.Width - 48;
     }
 
-    private void AddMoved(FileCompareData lFile, FileCompareData rFile)
+    private void AddMoved(FileCompareData lFile, FileCompareData rFile, float similarity = 1f)
     {
       MovedPath movedPath = new MovedPath();
-      movedPath.LeftPath = lFile.path;
-      movedPath.RightPath = rFile.path;
-      movedPath.Filename = rFile.name;
+      movedPath.LeftFile = lFile;
+      movedPath.RightFile = rFile;
+      movedPath.Similarity = similarity;
       movedPath.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
 
       flowPanel.Controls.Add(movedPath);

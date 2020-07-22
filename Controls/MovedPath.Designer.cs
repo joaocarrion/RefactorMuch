@@ -1,4 +1,4 @@
-﻿namespace InteractiveMerge.Controls
+﻿namespace RefactorMuch.Controls
 {
   partial class MovedPath
   {
@@ -36,6 +36,7 @@
       this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
       this.tablePanel = new System.Windows.Forms.TableLayoutPanel();
       this.panel1 = new System.Windows.Forms.Panel();
+      this.lblPercent = new System.Windows.Forms.Label();
       this.tablePanel.SuspendLayout();
       this.panel1.SuspendLayout();
       this.SuspendLayout();
@@ -45,9 +46,9 @@
       this.lbLeftPath.AutoEllipsis = true;
       this.lbLeftPath.Dock = System.Windows.Forms.DockStyle.Fill;
       this.lbLeftPath.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-      this.lbLeftPath.Location = new System.Drawing.Point(7, 36);
+      this.lbLeftPath.Location = new System.Drawing.Point(7, 35);
       this.lbLeftPath.Name = "lbLeftPath";
-      this.lbLeftPath.Size = new System.Drawing.Size(348, 32);
+      this.lbLeftPath.Size = new System.Drawing.Size(315, 32);
       this.lbLeftPath.TabIndex = 0;
       this.lbLeftPath.Text = "File path A => File path B\r\n";
       this.lbLeftPath.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -56,9 +57,9 @@
       // 
       this.btDiff.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
-      this.btDiff.Location = new System.Drawing.Point(595, 0);
+      this.btDiff.Location = new System.Drawing.Point(529, 0);
       this.btDiff.Name = "btDiff";
-      this.btDiff.Size = new System.Drawing.Size(107, 26);
+      this.btDiff.Size = new System.Drawing.Size(107, 25);
       this.btDiff.TabIndex = 1;
       this.btDiff.Text = "Diff...";
       this.btDiff.UseVisualStyleBackColor = true;
@@ -69,9 +70,9 @@
       this.lbRightPath.AutoEllipsis = true;
       this.lbRightPath.Dock = System.Windows.Forms.DockStyle.Fill;
       this.lbRightPath.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-      this.lbRightPath.Location = new System.Drawing.Point(361, 36);
+      this.lbRightPath.Location = new System.Drawing.Point(328, 35);
       this.lbRightPath.Name = "lbRightPath";
-      this.lbRightPath.Size = new System.Drawing.Size(348, 32);
+      this.lbRightPath.Size = new System.Drawing.Size(315, 32);
       this.lbRightPath.TabIndex = 2;
       this.lbRightPath.Text = "File path A => File path B\r\n";
       this.lbRightPath.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -85,7 +86,7 @@
       this.lbFilename.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
       this.lbFilename.Location = new System.Drawing.Point(0, 0);
       this.lbFilename.Name = "lbFilename";
-      this.lbFilename.Size = new System.Drawing.Size(589, 26);
+      this.lbFilename.Size = new System.Drawing.Size(523, 25);
       this.lbFilename.TabIndex = 3;
       this.lbFilename.Text = "FileName A";
       this.lbFilename.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -101,13 +102,13 @@
       this.tablePanel.Controls.Add(this.lbRightPath, 1, 1);
       this.tablePanel.Controls.Add(this.lbLeftPath, 0, 1);
       this.tablePanel.Controls.Add(this.panel1, 0, 0);
-      this.tablePanel.Location = new System.Drawing.Point(0, 0);
+      this.tablePanel.Location = new System.Drawing.Point(64, 1);
       this.tablePanel.Name = "tablePanel";
       this.tablePanel.Padding = new System.Windows.Forms.Padding(4);
       this.tablePanel.RowCount = 2;
       this.tablePanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
       this.tablePanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-      this.tablePanel.Size = new System.Drawing.Size(716, 72);
+      this.tablePanel.Size = new System.Drawing.Size(650, 71);
       this.tablePanel.TabIndex = 0;
       // 
       // panel1
@@ -118,14 +119,26 @@
       this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
       this.panel1.Location = new System.Drawing.Point(7, 7);
       this.panel1.Name = "panel1";
-      this.panel1.Size = new System.Drawing.Size(702, 26);
+      this.panel1.Size = new System.Drawing.Size(636, 25);
       this.panel1.TabIndex = 4;
+      // 
+      // lblPercent
+      // 
+      this.lblPercent.Font = new System.Drawing.Font("Verdana", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.lblPercent.Location = new System.Drawing.Point(0, 0);
+      this.lblPercent.Name = "lblPercent";
+      this.lblPercent.Padding = new System.Windows.Forms.Padding(4, 0, 4, 0);
+      this.lblPercent.Size = new System.Drawing.Size(65, 72);
+      this.lblPercent.TabIndex = 1;
+      this.lblPercent.Text = "100%";
+      this.lblPercent.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
       // 
       // MovedPath
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+      this.Controls.Add(this.lblPercent);
       this.Controls.Add(this.tablePanel);
       this.MinimumSize = new System.Drawing.Size(400, 70);
       this.Name = "MovedPath";
@@ -145,5 +158,6 @@
     private System.Windows.Forms.ToolTip toolTip1;
     private System.Windows.Forms.TableLayoutPanel tablePanel;
     private System.Windows.Forms.Panel panel1;
+    private System.Windows.Forms.Label lblPercent;
   }
 }

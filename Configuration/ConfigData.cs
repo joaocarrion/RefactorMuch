@@ -1,20 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Text.Json;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text;
 
-namespace InteractiveMerge.Configuration
+namespace RefactorMuch.Configuration
 {
   public class ConfigData
   {
-    public DictionaryProperty config { get; private set; }
-
     private readonly string path;
+
+    public JObject doc { get; private set; }
 
     public ConfigData(string path)
     {
@@ -22,40 +20,27 @@ namespace InteractiveMerge.Configuration
 
       try
       {
-        using (BufferedStream bs = new BufferedStream(File.OpenRead(path)))
+        using (TextReader reader = new StreamReader(File.OpenRead(path), Encoding.UTF8))
         {
-          bs.Seek(0, SeekOrigin.End);
-          var size = bs.Position;
-          bs.Seek(0, SeekOrigin.Begin);
-
-          byte[] data = new byte[size + 1];
-          bs.Read(data, 0, (int)size + 1);
-
-          Utf8JsonReader reader = new Utf8JsonReader(new ReadOnlySpan<byte>(data));
-          config = JsonSerializer.Deserialize<DictionaryProperty>(ref reader);
+          string s = reader.ReadToEnd();
+          doc = new JObject(s);
         }
       }
       catch (IOException)
       {
-        config = new DictionaryProperty { name = "config" };
+        doc = JObject.FromObject(new {});
       }
       catch (Exception exc)
       {
         MessageBox.Show(exc.Message, "Unknown Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        throw;
       }
     }
 
-    /// <summary>
-    /// Explicitly locked save function, expecting maintenance on properties from only the main thread
-    /// </summary>
     public void Save()
     {
-      using (BufferedStream bs = new BufferedStream(File.Create(path)))
-      {
-        var task = JsonSerializer.SerializeAsync(bs, config);
-        while (!task.IsCompleted)
-          Thread.Sleep(20);
-      }
+      using (TextWriter writer = new StreamWriter(File.Create(path)))
+        writer.Write(doc.ToString());
     }
   }
 }

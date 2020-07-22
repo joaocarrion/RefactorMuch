@@ -1,4 +1,4 @@
-﻿namespace InteractiveMerge
+﻿namespace RefactorMuch
 {
   partial class MainForm
   {
@@ -28,7 +28,7 @@
     /// </summary>
     private void InitializeComponent()
     {
-      this.directoryBrowse1 = new InteractiveMerge.DirectoryBrowse();
+      this.directoryBrowse1 = new RefactorMuch.DirectoryBrowse();
       this.textBox1 = new System.Windows.Forms.TextBox();
       this.textBox2 = new System.Windows.Forms.TextBox();
       this.textBox3 = new System.Windows.Forms.TextBox();

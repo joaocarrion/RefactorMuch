@@ -1,4 +1,4 @@
-﻿namespace InteractiveMerge.Controls
+﻿namespace RefactorMuch.Controls
 {
   partial class TaskProgress
   {

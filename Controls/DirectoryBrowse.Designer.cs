@@ -1,4 +1,4 @@
-﻿namespace InteractiveMerge
+﻿namespace RefactorMuch
 {
   partial class DirectoryBrowse
   {
@@ -39,7 +39,7 @@
       this.btSettings = new System.Windows.Forms.Button();
       this.updateProgess = new System.Windows.Forms.Timer(this.components);
       this.flowPanel = new System.Windows.Forms.FlowLayoutPanel();
-      this.taskProgress1 = new InteractiveMerge.Controls.TaskProgress();
+      this.taskProgress1 = new RefactorMuch.Controls.TaskProgress();
       this.SuspendLayout();
       // 
       // label1
