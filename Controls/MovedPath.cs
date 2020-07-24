@@ -38,9 +38,9 @@ namespace RefactorMuch.Controls
     }
 
     public float Similarity {
-      get => float.Parse(lblPercent.Text.Replace("%", ""));
+      get => float.Parse(lblPercent.Text.Replace("%", "")) / 100f;
       set {
-        lblPercent.Text = $"{value:00}%";
+        lblPercent.Text = $"{value * 100f:00}%";
       }
     }
 
@@ -50,7 +50,7 @@ namespace RefactorMuch.Controls
 
     private void btDiff_Click(object sender, EventArgs e)
     {
-      Process.Start(winmerge, $"/s \"{LeftPath}\" \"{RightPath}\"");
+      Process.Start(winmerge, $"/s \"{LeftFile.absolutePath}\" \"{RightFile.absolutePath}\"");
     }
   }
 }

@@ -73,18 +73,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration\ConfigData.cs" />
+    <Compile Include="Controls\ChangedNode.cs" />
     <Compile Include="Controls\DirectoryBrowse.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\DirectoryBrowse.Designer.cs">
       <DependentUpon>DirectoryBrowse.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\DuplicateNode.cs" />
     <Compile Include="Controls\LeftOnly.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\LeftOnly.Designer.cs">
       <DependentUpon>LeftOnly.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\MovedNode.cs" />
     <Compile Include="Controls\MovedPath.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -103,8 +106,12 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Parse\CompareSets.cs" />
     <Compile Include="Parse\CrossCompare.cs" />
+    <Compile Include="Parse\CrossCompareList.cs" />
     <Compile Include="Parse\DirectoryCompare.cs" />
+    <Compile Include="Parse\FileCompareData.cs" />
+    <Compile Include="Parse\LineMatch.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Controls\DirectoryBrowse.resx">

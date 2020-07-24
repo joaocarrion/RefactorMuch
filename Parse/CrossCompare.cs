@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json.Serialization;
+using System;
 using System.Linq;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
@@ -14,54 +13,23 @@ namespace RefactorMuch.Parse
     public float similarity;
     public FileCompareData left;
     public FileCompareData right;
-  }
 
-  public class CrossList : IList<CrossCompare>
-  {
-    private float minValue = 0;
-    private List<CrossCompare> list = new List<CrossCompare>();
-
-    public CrossList(float minValue)
+    public override bool Equals(object obj)
     {
-      this.minValue = minValue;
+      var cast = (CrossCompare)obj;
+      if (cast == null) return false;
+
+      return (cast.left == left && cast.right == right) || (cast.right == left && cast.left == right);
     }
 
-    public CrossCompare this[int index] { get => list[index]; set => list[index] = value; }
-
-    public int Count => list.Count;
-
-    public bool IsReadOnly => false;
-
-    public void Add(CrossCompare item)
+    public override int GetHashCode()
     {
-      if (item.similarity > minValue)
-      {
-        foreach (var e in list)
-        {
-          if (e.similarity < item.similarity)
-          {
-            list.Insert(list.IndexOf(e), item);
-            return;
-          }
-        }
-
-        list.Add(item);
-      }
+      return left.GetHashCode() | right.GetHashCode();
     }
 
-    public void Clear()
+    public override string ToString()
     {
-      list.Clear();
+      return $"Left: {left.name}, Right: {right.name}, Similarity {Math.Round(similarity * 100, 0):0}";
     }
-
-    public bool Contains(CrossCompare item) => list.Contains(item);
-    public void CopyTo(CrossCompare[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
-    public IEnumerator<CrossCompare> GetEnumerator() => list.GetEnumerator();
-    public int IndexOf(CrossCompare item) => list.IndexOf(item);
-    public void Insert(int index, CrossCompare item) => list.Insert(index, item);
-    public bool Remove(CrossCompare item) => list.Remove(item);
-    public void RemoveAt(int index) => list.RemoveAt(index);
-
-    IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
   }
 }

@@ -5,23 +5,13 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Collections;
+using System.Threading;
 using System.Linq;
 
 namespace RefactorMuch.Parse
 {
-  public class FileCompareData
-  {
-    public bool parsed = false;
-    public string name;
-    public string path;
-    public byte[] hash;
-    public string localPath;
-    public DateTime lastChange;
-    internal string absolutePath;
-    public List<byte[]> lineHash = new List<byte[]>();
-  }
-
-  public class DirectoryCompare
+  public partial class DirectoryCompare
   {
     private int totalFiles = 0;
     private int fileScanIndex = 0;
@@ -30,17 +20,6 @@ namespace RefactorMuch.Parse
     private long crossCompareIndex = 0;
     private long totalCrossCompare = 0;
 
-    private class CompareSets
-    {
-      public string Path;
-      public CrossList CrossList;
-      public List<string> FileList;
-      public HashSet<string> Filenames;
-      public HashSet<CrossCompare> Duplicates;
-      public Dictionary<string, FileCompareData> Files;
-      public List<FileCompareData> AllFiles = new List<FileCompareData>();
-    }
-
     public string LeftPath { get; }
     public string RightPath { get; }
     public HashSet<string> Filenames { get; private set; } = new HashSet<string>();
@@ -48,7 +27,7 @@ namespace RefactorMuch.Parse
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public HashSet<CrossCompare> DuplicateLeft { get; private set; } = new HashSet<CrossCompare>();
     public HashSet<CrossCompare> DuplicateRight { get; private set; } = new HashSet<CrossCompare>();
-    public CrossList CrossList { get; private set; } = new CrossList(0.65f); // minimum 65%
+    public CrossCompareList CrossList { get; private set; } = new CrossCompareList(0.65f); // minimum 65%
 
     public int Progress => ProgressCount();
 
@@ -80,7 +59,7 @@ namespace RefactorMuch.Parse
         CompareSets left = new CompareSets
         {
           FileList = files,
-          CrossList = CrossList,
+          CrossCompareList = CrossList,
           Duplicates = DuplicateLeft,
           Filenames = Filenames,
           Files = LeftFiles,
@@ -95,17 +74,17 @@ namespace RefactorMuch.Parse
         var files = ListFiles(RightPath);
         totalFiles += files.Count;
 
-        CompareSets left = new CompareSets
+        CompareSets right = new CompareSets
         {
           FileList = files,
-          CrossList = CrossList,
+          CrossCompareList = CrossList,
           Duplicates = DuplicateRight,
           Filenames = Filenames,
-          Files = LeftFiles,
-          Path = LeftPath
+          Files = RightFiles,
+          Path = RightPath
         };
 
-        return ParseFiles(left);
+        return ParseFiles(right);
       });
 
       var leftSet = await taskLeft;
@@ -138,17 +117,26 @@ namespace RefactorMuch.Parse
       {
         foreach (var rightFile in rightSet.AllFiles)
         {
-          if (leftFile.hash.SequenceEqual(rightFile.hash))
+          if (leftFile.Equals(rightFile))
             continue;
 
-          float percentEqual = CrossCompareFiles(leftFile, rightFile);
-          lock(leftSet) {
-            leftSet.CrossList.Add(new CrossCompare
-            {
-               left = leftFile,
-               right = rightFile,
-               similarity = percentEqual
-            });
+          if (leftSet == rightSet && leftFile.hash.SequenceEqual(rightFile.hash))
+          {
+            lock (leftSet) { leftSet.Duplicates.Add(new CrossCompare() { left = leftFile, right = rightFile, similarity = 1f }); }
+            continue;
+          }
+
+          var cc = new CrossCompare()
+          {
+            similarity = CrossCompareFiles(leftFile, rightFile),
+            left = leftFile,
+            right = rightFile
+          };
+
+          if (cc.similarity > 0.5f)
+          {
+            lock (leftSet) { leftSet.CrossCompareList.Add(cc); }
+            lock (rightSet) { rightSet.CrossCompareList.Add(cc); }
           }
         }
       }
@@ -156,15 +144,25 @@ namespace RefactorMuch.Parse
 
     private float CrossCompareFiles(FileCompareData leftFile, FileCompareData rightFile)
     {
-      int matchingLines = 0;
-      int lines = Math.Max(leftFile.lineHash.Count, rightFile.lineHash.Count);
+      // create a unique set of left and right to avoid exponential comparisons
+      HashSet<LineMatch> left = new HashSet<LineMatch>();
+      foreach (var line in leftFile.lineHash)
+        left.Add(new LineMatch { count = 0, hash = line });
+      HashSet<LineMatch> right = new HashSet<LineMatch>();
+      foreach (var line in rightFile.lineHash)
+        right.Add(new LineMatch { count = 0, hash = line });
 
-      foreach (var lLine in leftFile.lineHash)
-        foreach (var rLine in rightFile.lineHash)
-          if (lLine.SequenceEqual(rLine))
-            ++matchingLines;
+      // fill in right with left values
+      foreach (var ln in left)
+      {
+        LineMatch actual;
+        if (right.TryGetValue(ln, out actual))
+          actual.count++;
+        else
+          right.Add(ln);
+      }
 
-      return (float)matchingLines / (float)lines;
+      return (float)(from ln in right where ln.count > 0 select ln).Count() / (float)right.Count;
     }
 
     private CompareSets ParseFiles(CompareSets set)

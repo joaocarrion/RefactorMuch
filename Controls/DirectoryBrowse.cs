@@ -37,31 +37,33 @@ namespace RefactorMuch
     {
       var ll = doc.Value<string>("lastLeft");
       var lr = doc.Value<string>("lastRight");
-      var listItems = doc.Value<string []>("lastItems");
+      var lastItemsArray = doc.Value<JArray>("lastItems");
+      string[] lastItems = lastItemsArray != null ? lastItemsArray.Select(c => (string)c).ToArray() : null;
 
       if (ll != null)
         cbLeftDirectory.Text = ll;
       if (lr != null)
         cbRightDirectory.Text = lr;
-      
-      if (listItems != null)
+
+      if (lastItems != null)
       {
-        cbLeftDirectory.Items.AddRange(listItems);
-        cbRightDirectory.Items.AddRange(listItems);
+        cbLeftDirectory.Items.AddRange(lastItems);
+        cbRightDirectory.Items.AddRange(lastItems);
       }
     }
 
     private void ConfigSave()
     {
-      doc.Add("lastLeft", cbLeftDirectory.Text);
-      doc.Add("lastRight", cbRightDirectory.Text);
-      
+      doc["lastLeft"] = cbLeftDirectory.Text;
+      doc["lastRight"] = cbRightDirectory.Text;
+
       var set = new HashSet<string>();
       foreach (var item in cbLeftDirectory.Items)
         set.Add(item.ToString());
       foreach (var item in cbRightDirectory.Items)
         set.Add(item.ToString());
-      doc.Add("lastItems", new JArray(set.ToArray()));
+
+      doc["lastItems"] = new JArray(set.ToArray());
 
       config.Save();
     }
@@ -79,7 +81,7 @@ namespace RefactorMuch
           cbRightDirectory.Text = dialog.SelectedPath;
     }
 
-    private void btStartRefresh_Click(object sender, EventArgs e)
+    private void ButtonStart(object sender, EventArgs e)
     {
       if (!Directory.Exists(cbLeftDirectory.Text))
         MessageBox.Show("Left path is not a directory");
@@ -87,17 +89,20 @@ namespace RefactorMuch
         MessageBox.Show("Left path is not a directory");
       else
       {
+        btStartRefresh.Enabled = false;
+
         cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
         cbRightDirectory.Items.Add(cbRightDirectory.Text);
         ConfigSave();
-
-        flowPanel.Controls.Clear();
+        
+        treeView1.Nodes.Clear();
+        SuspendLayout();
         Compare();
       }
     }
 
 
-    private void updateProgess_Tick(object sender, EventArgs e)
+    private void UpdateProgress(object sender, EventArgs e)
     {
       if (compare != null)
       {
@@ -108,73 +113,145 @@ namespace RefactorMuch
 
     private async void Compare()
     {
-      var exts = "*.cs"; //Aggregate(filterExtentions);
+      // TODO: Settings
+      var exts = "*.cs";
       string leftPath = cbLeftDirectory.Text;
       string rightPath = cbRightDirectory.Text;
 
       compare = new DirectoryCompare(leftPath, rightPath, exts);
       await compare.Parse();
 
-      var left = compare.LeftFiles;
-      var right = compare.RightFiles;
+      var rootNode = new TreeNode($"Comparison: {leftPath} x {rightPath}", 0, 0);
+      var leftDuplicates = new TreeNode("Left Duplicates", 1, 1);
+      var rightDuplicates = new TreeNode("Right Duplicates", 1, 1);
 
-      // TODO: Move into file comparison
-      foreach (string file in compare.Filenames)
+      treeView1.Nodes.Add(rootNode);
+      rootNode.Nodes.Add(leftDuplicates);
+      rootNode.Nodes.Add(rightDuplicates);
+
+      AddDuplicates(leftDuplicates, compare.DuplicateLeft);
+      AddDuplicates(rightDuplicates, compare.DuplicateRight);
+
+      AddMovedOrChanged();
+
+      rootNode.Expand();
+
+      //// TODO: Move into file comparison
+      //foreach (string file in compare.Filenames)
+      //{
+      //  FileCompareData lFile = null;
+      //  FileCompareData rFile = null;
+
+      //  if (left.ContainsKey(file))
+      //    lFile = left[file];
+
+      //  if (right.ContainsKey(file))
+      //    rFile = right[file];
+
+      //  if (lFile != null && rFile != null)
+      //    AddMoveOrChanged(lFile, rFile);
+      //  else if (lFile != null)
+      //    AddSideOnly(lFile, true);
+      //  else if (rFile != null)
+      //    AddSideOnly(rFile, false);
+      //}
+
+      //foreach (var duplicate in compare.DuplicateLeft)
+      //  AddMoveOrChanged(duplicate.left, duplicate.right);
+
+      //// TODO: Enable/disable cross compare
+      //foreach (var crossCompare in compare.CrossList)
+      //  AddMoveOrChanged(crossCompare.left, crossCompare.right, crossCompare.similarity);
+
+      btStartRefresh.Enabled = true;
+      ResumeLayout();
+    }
+
+    private void AddMovedOrChanged()
+    {
+      var rootNode = treeView1.Nodes[0];
+      var moved = rootNode.Nodes.Add("Moved Files");
+      var changed = rootNode.Nodes.Add("Changed Files");
+
+      Dictionary<string, TreeNode> movedGroup = new Dictionary<string, TreeNode>();
+      Dictionary<string, TreeNode> changedGroup = new Dictionary<string, TreeNode>();
+      foreach (var filename in compare.Filenames)
       {
-        FileCompareData lFile = null;
-        FileCompareData rFile = null;
+        FileCompareData left;
+        compare.LeftFiles.TryGetValue(filename, out left);
 
-        if (left.ContainsKey(file))
-          lFile = left[file];
+        FileCompareData right;
+        compare.LeftFiles.TryGetValue(filename, out right); // no pun intented
 
-        if (right.ContainsKey(file))
-          rFile = right[file];
-
-        if (lFile != null && rFile != null && lFile.parsed && rFile.parsed)
+        if (left != null && right != null)
         {
-          // Add only different
-          if (!lFile.hash.SequenceEqual(rFile.hash))
-            AddMoved(lFile, rFile);
+          if (!left.localPath.Equals(right.localPath))
+          {
+            if (!movedGroup.ContainsKey(left.localPath))
+            {
+              movedGroup.Add(left.localPath, new TreeNode(left.localPath, 1, 1));
+              moved.Nodes.Add(movedGroup[left.localPath]);
+            }
+
+            movedGroup[left.localPath].Nodes.Add(new MovedNode(left, right, 1));
+          }
+
+          if (!left.hash.SequenceEqual(right.hash))
+          {
+            if (!changedGroup.ContainsKey(left.localPath))
+            {
+              changedGroup.Add(left.localPath, new TreeNode(left.localPath, 1, 1));
+              changed.Nodes.Add(changedGroup[left.localPath]);
+            }
+
+            changedGroup[left.localPath].Nodes.Add(new ChangedNode(left, right, 1));
+          }
         }
-        else if (lFile != null && lFile.parsed)
-          AddSideOnly(lFile, true);
-        else if (rFile != null && rFile.parsed)
-          AddSideOnly(rFile, false);
       }
+    }
 
-      // TODO: Enable/disable cross compare
-      foreach (var crossCompare in compare.CrossList)
+    private void AddDuplicates(TreeNode root, HashSet<CrossCompare> cross)
+    {
+      Dictionary<string, TreeNode> duplicateNodes = new Dictionary<string, TreeNode>();
+      foreach (var file in cross)
       {
-        AddMoved(crossCompare.left, crossCompare.right, crossCompare.similarity);
+        if (!duplicateNodes.ContainsKey(file.left.localPath))
+        {
+          var node = new TreeNode(file.left.localPath, 1, 1);
+          root.Nodes.Add(node);
+          duplicateNodes.Add(file.left.localPath, node);
+        }
+
+        duplicateNodes[file.left.localPath].Nodes.Add(new DuplicateNode(file.left, file.right, 1));
       }
     }
 
-    private void AddSideOnly(FileCompareData fileCompare, bool isLeft)
-    {
-      LeftOnly leftOnly = new LeftOnly();
-      leftOnly.LeftFile = fileCompare;
-      leftOnly.IsLeft = isLeft;
-      leftOnly.RightRootPath = isLeft ? compare.RightPath : compare.LeftPath;
-      leftOnly.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
+    //private void AddSideOnly(FileCompareData fileCompare, bool isLeft)
+    //{
+    //  LeftOnly leftOnly = new LeftOnly();
+    //  leftOnly.LeftFile = fileCompare;
+    //  leftOnly.IsLeft = isLeft;
+    //  leftOnly.RightRootPath = isLeft ? compare.RightPath : compare.LeftPath;
+    //  leftOnly.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
 
-      flowPanel.Controls.Add(leftOnly);
-      leftOnly.Width = flowPanel.Width - 48;
-    }
+    //  flowPanel.Controls.Add(leftOnly);
+    //  leftOnly.Width = flowPanel.Width - 48;
+    //}
 
-    private void AddMoved(FileCompareData lFile, FileCompareData rFile, float similarity = 1f)
-    {
-      MovedPath movedPath = new MovedPath();
-      movedPath.LeftFile = lFile;
-      movedPath.RightFile = rFile;
-      movedPath.Similarity = similarity;
-      movedPath.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
+    //private void AddMoveOrChanged(FileCompareData lFile, FileCompareData rFile, float similarity = 1f)
+    //{
+    //  if (!lFile.localPath.Equals(rFile.localPath) || !lFile.hash.SequenceEqual(rFile.hash))
+    //  {
+    //    MovedPath movedPath = new MovedPath();
+    //    movedPath.LeftFile = lFile;
+    //    movedPath.RightFile = rFile;
+    //    movedPath.Similarity = similarity;
+    //    movedPath.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
 
-      flowPanel.Controls.Add(movedPath);
-      movedPath.Width = flowPanel.Width - 48;
-    }
+    //    flowPanel.Controls.Add(movedPath);
+    //    movedPath.Width = flowPanel.Width - 48;
+    //  }
+    //}
 
-    private void AddUnchangedPath(FileCompareData lFile, FileCompareData rFile)
-    {
-    }
   }
 }

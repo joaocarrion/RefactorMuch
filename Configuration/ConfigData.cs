@@ -20,11 +20,8 @@ namespace RefactorMuch.Configuration
 
       try
       {
-        using (TextReader reader = new StreamReader(File.OpenRead(path), Encoding.UTF8))
-        {
-          string s = reader.ReadToEnd();
-          doc = new JObject(s);
-        }
+        using (var reader = new JsonTextReader(new StreamReader(File.OpenRead(path), Encoding.UTF8)))
+          doc = (JObject)JObject.ReadFrom(reader);
       }
       catch (IOException)
       {
