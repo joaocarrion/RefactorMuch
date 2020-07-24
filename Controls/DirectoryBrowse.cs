@@ -181,7 +181,7 @@ namespace RefactorMuch
         compare.LeftFiles.TryGetValue(filename, out left);
 
         FileCompareData right;
-        compare.LeftFiles.TryGetValue(filename, out right); // no pun intented
+        compare.RightFiles.TryGetValue(filename, out right); // no pun intented
 
         if (left != null && right != null)
         {
