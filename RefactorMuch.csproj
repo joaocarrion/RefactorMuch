@@ -73,60 +73,49 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration\ConfigData.cs" />
-    <Compile Include="Controls\ChangedNode.cs" />
+    <Compile Include="Controls\DialogHelper.cs" />
+    <Compile Include="Controls\TreeNodes\ChangedNode.cs" />
     <Compile Include="Controls\DirectoryBrowse.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\DirectoryBrowse.Designer.cs">
       <DependentUpon>DirectoryBrowse.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\DuplicateNode.cs" />
-    <Compile Include="Controls\LeftOnly.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\LeftOnly.Designer.cs">
-      <DependentUpon>LeftOnly.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\MovedNode.cs" />
-    <Compile Include="Controls\MovedPath.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\MovedPath.Designer.cs">
-      <DependentUpon>MovedPath.cs</DependentUpon>
-    </Compile>
+    <Compile Include="Controls\TreeNodes\CrossCompareNode.cs" />
+    <Compile Include="Controls\TreeNodes\DuplicateNode.cs" />
+    <Compile Include="Controls\TreeNodes\MenuStrip.cs" />
+    <Compile Include="Controls\TreeNodes\MovedNode.cs" />
+    <Compile Include="Controls\TreeNodes\SimilarNode.cs" />
     <Compile Include="Controls\TaskProgress.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\TaskProgress.Designer.cs">
       <DependentUpon>TaskProgress.cs</DependentUpon>
     </Compile>
-    <Compile Include="MainForm.cs">
+    <Compile Include="Controls\Tools.cs" />
+    <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainForm.Designer.cs">
+    <Compile Include="Forms\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Parse\CompareSets.cs" />
     <Compile Include="Parse\CrossCompare.cs" />
-    <Compile Include="Parse\CrossCompareList.cs" />
+    <Compile Include="Parse\CrossCompareSet.cs" />
     <Compile Include="Parse\DirectoryCompare.cs" />
     <Compile Include="Parse\FileCompareData.cs" />
-    <Compile Include="Parse\LineMatch.cs" />
+    <Compile Include="Parse\Rule.cs" />
+    <Compile Include="Parse\RuleSet.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Util\MultiTask.cs" />
     <EmbeddedResource Include="Controls\DirectoryBrowse.resx">
       <DependentUpon>DirectoryBrowse.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\LeftOnly.resx">
-      <DependentUpon>LeftOnly.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\MovedPath.resx">
-      <DependentUpon>MovedPath.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Controls\TaskProgress.resx">
       <DependentUpon>TaskProgress.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="MainForm.resx">
+    <EmbeddedResource Include="Forms\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -153,5 +142,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

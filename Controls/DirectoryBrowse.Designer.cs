@@ -157,6 +157,7 @@
       this.treeView1.ShowRootLines = false;
       this.treeView1.Size = new System.Drawing.Size(757, 608);
       this.treeView1.TabIndex = 14;
+      this.treeView1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MouseClickTreeView);
       // 
       // imageList1
       // 
@@ -164,6 +165,9 @@
       this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
       this.imageList1.Images.SetKeyName(0, "diff.png");
       this.imageList1.Images.SetKeyName(1, "duplicate.png");
+      this.imageList1.Images.SetKeyName(2, "moved.png");
+      this.imageList1.Images.SetKeyName(3, "changed.png");
+      this.imageList1.Images.SetKeyName(4, "similar.png");
       // 
       // taskProgress1
       // 

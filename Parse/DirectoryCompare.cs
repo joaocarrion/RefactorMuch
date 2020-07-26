@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
-using System.Text;
-using System.Collections;
-using System.Threading;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace RefactorMuch.Parse
 {
@@ -22,12 +19,14 @@ namespace RefactorMuch.Parse
 
     public string LeftPath { get; }
     public string RightPath { get; }
-    public HashSet<string> Filenames { get; private set; } = new HashSet<string>();
+    public SortedSet<string> Filenames { get; private set; } = new SortedSet<string>();
     public Dictionary<string, FileCompareData> LeftFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
-    public HashSet<CrossCompare> DuplicateLeft { get; private set; } = new HashSet<CrossCompare>();
-    public HashSet<CrossCompare> DuplicateRight { get; private set; } = new HashSet<CrossCompare>();
-    public CrossCompareList CrossList { get; private set; } = new CrossCompareList(0.65f); // minimum 65%
+    public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
+
+    // TODO: In the future, semantic comparison would be nice instead
+    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.45f);
 
     public int Progress => ProgressCount();
 
@@ -59,7 +58,7 @@ namespace RefactorMuch.Parse
         CompareSets left = new CompareSets
         {
           FileList = files,
-          CrossCompareList = CrossList,
+          CrossCompareList = CrossSet,
           Duplicates = DuplicateLeft,
           Filenames = Filenames,
           Files = LeftFiles,
@@ -77,7 +76,7 @@ namespace RefactorMuch.Parse
         CompareSets right = new CompareSets
         {
           FileList = files,
-          CrossCompareList = CrossList,
+          CrossCompareList = CrossSet,
           Duplicates = DuplicateRight,
           Filenames = Filenames,
           Files = RightFiles,
@@ -95,12 +94,8 @@ namespace RefactorMuch.Parse
       var taskCompareRight = Task.Run(() => { CrossCompare(rightSet, rightSet); });
       var taskCompareLeftRight = Task.Run(() => { CrossCompare(leftSet, rightSet); });
 
-      // TODO: create setting to enable/disable cross compare and line compare
-      // cross compare duplicates on left
       await taskCompareLeft;
-      // cross compare duplicates on right
       await taskCompareRight;
-      // cross compare left/right
       await taskCompareLeftRight;
 
       totalFiles = 0;
@@ -111,65 +106,89 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
+    private object debugLock = new object();
+
+    private void FindDuplicates(CompareSets set)
+    {
+      // DEBUG
+      lock (debugLock)
+      {
+        var comparable = (from file in set.AllFiles
+                          where file.name == "GameSessionActivator.cs"
+                          select file).ToArray();
+
+        if (comparable.Length == 2)
+        {
+          CrossCompare a = new CrossCompare(comparable[0], comparable[1], 1f);
+          CrossCompare b = new CrossCompare(comparable[1], comparable[0], 1f);
+
+          var equals = a.Equals(b);
+          var compareTo = a.CompareTo(b);
+          var codeA = a.GetHashCode();
+          var codeB = b.GetHashCode();
+          var fCompare = new bool[] { a.left == b.left, a.right == b.left, a.left == b.right, a.right == b.right };
+
+          SortedSet<CrossCompare> sortedA = new SortedSet<CrossCompare>();
+          sortedA.Add(a);
+          sortedA.Add(b);
+
+          foreach (var sorted in sortedA)
+          {
+            Console.WriteLine(sorted.ToString());
+          }
+        }
+      }
+
+      foreach (var leftFile in set.AllFiles)
+      {
+        foreach (var rightFile in set.AllFiles)
+        {
+          if (leftFile.Equals(rightFile)) continue;
+          
+          if (leftFile.hash.Equals(rightFile.hash))
+            lock (set.Duplicates) { set.Duplicates.Add(new CrossCompare(leftFile, rightFile, 1f)); }
+        }
+      }
+
+      lock (debugLock)
+      {
+
+      }
+    }
+
     private void CrossCompare(CompareSets leftSet, CompareSets rightSet)
     {
+      // find all duplicates on set
+      if (leftSet == rightSet)
+        FindDuplicates(leftSet);
+
       foreach (var leftFile in leftSet.AllFiles)
       {
         foreach (var rightFile in rightSet.AllFiles)
         {
+          // ignore same file
           if (leftFile.Equals(rightFile))
             continue;
 
-          if (leftSet == rightSet && leftFile.hash.SequenceEqual(rightFile.hash))
-          {
-            lock (leftSet) { leftSet.Duplicates.Add(new CrossCompare() { left = leftFile, right = rightFile, similarity = 1f }); }
+          // ignore equals (moved detection can show them elsewhere
+          if (leftFile.hash.Equals(rightFile.hash))
             continue;
-          }
 
-          var cc = new CrossCompare()
-          {
-            similarity = CrossCompareFiles(leftFile, rightFile),
-            left = leftFile,
-            right = rightFile
-          };
+          // find similar
+          var cc = new CrossCompare(leftFile, rightFile);
 
-          if (cc.similarity > 0.5f)
-          {
-            lock (leftSet) { leftSet.CrossCompareList.Add(cc); }
-            lock (rightSet) { rightSet.CrossCompareList.Add(cc); }
-          }
+          // add similar files
+          lock (leftSet) { leftSet.CrossCompareList.Add(cc); }
         }
       }
-    }
-
-    private float CrossCompareFiles(FileCompareData leftFile, FileCompareData rightFile)
-    {
-      // create a unique set of left and right to avoid exponential comparisons
-      HashSet<LineMatch> left = new HashSet<LineMatch>();
-      foreach (var line in leftFile.lineHash)
-        left.Add(new LineMatch { count = 0, hash = line });
-      HashSet<LineMatch> right = new HashSet<LineMatch>();
-      foreach (var line in rightFile.lineHash)
-        right.Add(new LineMatch { count = 0, hash = line });
-
-      // fill in right with left values
-      foreach (var ln in left)
-      {
-        LineMatch actual;
-        if (right.TryGetValue(ln, out actual))
-          actual.count++;
-        else
-          right.Add(ln);
-      }
-
-      return (float)(from ln in right where ln.count > 0 select ln).Count() / (float)right.Count;
     }
 
     private CompareSets ParseFiles(CompareSets set)
     {
       foreach (var file in set.FileList)
       {
-        var data = GetCompareData(file, set.Path);
+        // Could create a task
+        var data = FileCompareData.FromFile(file, set.Path);
         lock (set)
         {
           set.AllFiles.Add(data);
@@ -181,63 +200,6 @@ namespace RefactorMuch.Parse
       }
 
       return set;
-    }
-
-    private Regex regFullcompare = new Regex("[ \\n\\r;\\{\\}]");
-    private Regex regLineCompare = new Regex("[ \\r;\\{\\}]");
-
-    private FileCompareData GetCompareData(string file, string sourcePath)
-    {
-      var name = Path.GetFileName(file);
-      var path = file.Replace(name, "");
-      var local = path.Replace(sourcePath, "");
-
-      var fd = new FileCompareData()
-      {
-        hash = null,
-        lastChange = File.GetLastWriteTime(file),
-        name = name,
-        absolutePath = file,
-        path = path,
-        localPath = local
-      };
-
-      try
-      {
-        using (var bs = new BufferedStream(File.OpenRead(file)))
-        {
-          long size = bs.Seek(0, SeekOrigin.End);
-          bs.Seek(0, SeekOrigin.Begin);
-
-          if (size > int.MaxValue)
-            return fd; // no comparison available, file too big
-
-          byte[] data = new byte[size + 1];
-          int read = bs.Read(data, 0, (int)size);
-
-          string str = Encoding.UTF8.GetString(data, 0, read);
-          data = null; // take a hint :D
-
-          var fullCompare = regFullcompare.Replace(str, "");
-          var fullData = Encoding.UTF8.GetBytes(fullCompare);
-
-          var lineCompare = regLineCompare.Replace(str, "").Split('\n');
-          var lineData = new byte[lineCompare.Length][];
-          for (int i = 0; i < lineCompare.Length; i++)
-            lineData[i] = Encoding.UTF8.GetBytes(lineCompare[i]);
-
-          using (var md5Hash = MD5.Create())
-          {
-            fd.hash = md5Hash.ComputeHash(fullData);
-            foreach (var line in lineData)
-              fd.lineHash.Add(md5Hash.ComputeHash(line));
-          }
-          fd.parsed = true;
-        }
-      }
-      catch (IOException) { }
-
-      return fd;
     }
 
     private List<string> ListFiles(string path)

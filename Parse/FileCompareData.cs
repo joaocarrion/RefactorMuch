@@ -1,37 +1,91 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RefactorMuch.Parse
 {
-  public class FileCompareData
+  public class FileCompareData : IComparable<FileCompareData>
   {
     public bool parsed = false;
     public string name;
+    public string extension;
     public string path;
-    public byte[] hash;
+    public string hash;
     public string localPath;
     public DateTime lastChange;
-    internal string absolutePath;
-    public List<byte[]> lineHash = new List<byte[]>();
+    public string absolutePath;
+    public List<string> lineHash = new List<string>();
+    public string parseError;
 
-    public override string ToString()
+    private static object setLock = new object();
+    private static Dictionary<string, RuleSet> ruleSets = null;
+    private static RuleSet fullSet = null;
+    private static RuleSet lineSet = null;
+
+    protected FileCompareData()
     {
-      return $"File: {name}, Path: ${absolutePath}, Lines: {lineHash.Count}";
     }
 
-    public override int GetHashCode()
+    public static void GetRules()
     {
-      return absolutePath.GetHashCode();
+      // initialize rules
+      lock (setLock)
+      {
+        if (ruleSets == null)
+          ruleSets = RuleSet.FromConfiguration();
+
+        fullSet = ruleSets["FileCompare"];
+        lineSet = ruleSets["LineCompare"];
+      }
     }
 
-    public override bool Equals(object obj)
+    public static FileCompareData FromFile(string file, string basePath, Regex[] filterExpressions = null)
     {
-      var cast = (FileCompareData)obj;
-      if (cast != null)
-        return absolutePath == cast.absolutePath;
-      else
-        return false;
+      GetRules();
+
+      FileCompareData data = new FileCompareData();
+      data.absolutePath = file;
+      data.name = Path.GetFileName(file);
+      data.extension = Path.GetExtension(file);
+      data.path = Path.GetDirectoryName(file);
+      data.localPath = data.path.Replace(basePath, "");
+      data.lastChange = File.GetLastWriteTime(file);
+
+      try
+      {
+        using (var bs = new StreamReader(File.OpenRead(file)))
+        {
+          var fileString = bs.ReadToEnd();
+          var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
+          var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
+                             where line.Length > 0
+                             select Encoding.UTF8.GetBytes(line)).ToArray();
+
+          using (var md5Hash = MD5.Create())
+          {
+            data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
+            foreach (var line in lineCompare)
+              data.lineHash.Add(BitConverter.ToString(md5Hash.ComputeHash(line)));
+          }
+          data.parsed = true;
+        }
+      }
+      catch (IOException exc) { data.parseError = exc.Message; }
+
+      return data;
     }
+
+    public override string ToString() => $"File: {name}, Path: ${absolutePath}, Lines: {lineHash.Count}";
+    public override int GetHashCode() => absolutePath.GetHashCode();
+    public override bool Equals(object obj) => string.Compare(absolutePath, ((FileCompareData)obj).absolutePath, true) == 0;
+
+    // comparison to enter sorted lists/sets
+    public int CompareTo(FileCompareData other) => absolutePath.CompareTo(other.absolutePath);
+    public FileCompareData SmallerLocalPath(FileCompareData other) => localPath.Length < other.localPath.Length ? this : other;
   }
 }
+

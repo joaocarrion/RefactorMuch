@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Forms;
+﻿using Newtonsoft.Json.Linq;
 using RefactorMuch.Configuration;
-using System.IO;
-using RefactorMuch.Parse;
 using RefactorMuch.Controls;
-using Newtonsoft.Json.Linq;
+using RefactorMuch.Parse;
+using RefactorMuch.Util;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace RefactorMuch
 {
@@ -28,7 +30,7 @@ namespace RefactorMuch
 
     private void DirectoryBrowse_Load(object sender, EventArgs e)
     {
-      config = new ConfigData(Application.LocalUserAppDataPath + "\\app.config");
+      config = ConfigData.GetInstance();
       doc = config.doc;
       LoadProps();
     }
@@ -94,9 +96,6 @@ namespace RefactorMuch
         cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
         cbRightDirectory.Items.Add(cbRightDirectory.Text);
         ConfigSave();
-        
-        treeView1.Nodes.Clear();
-        SuspendLayout();
         Compare();
       }
     }
@@ -113,145 +112,136 @@ namespace RefactorMuch
 
     private async void Compare()
     {
+      btStartRefresh.Enabled = false;
+      SuspendLayout();
+
       // TODO: Settings
       var exts = "*.cs";
       string leftPath = cbLeftDirectory.Text;
       string rightPath = cbRightDirectory.Text;
 
+      // Directory compare
       compare = new DirectoryCompare(leftPath, rightPath, exts);
       await compare.Parse();
 
-      var rootNode = new TreeNode($"Comparison: {leftPath} x {rightPath}", 0, 0);
-      var leftDuplicates = new TreeNode("Left Duplicates", 1, 1);
-      var rightDuplicates = new TreeNode("Right Duplicates", 1, 1);
+      // create root noew
+      treeView1.Nodes.Add(new TreeNode($"Comparison: {leftPath} x {rightPath}", 0, 0));
 
-      treeView1.Nodes.Add(rootNode);
-      rootNode.Nodes.Add(leftDuplicates);
-      rootNode.Nodes.Add(rightDuplicates);
+      // run tasks
+      var tasks = MultiTask.Run(new Func<TreeNode>[]
+      {
+        () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), compare.DuplicateLeft); },
+        () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
+        () => { return AddMoved(); },
+        () => { return AddChanged(); },
+        () => { return AddSimilar(); }
+      });
 
-      AddDuplicates(leftDuplicates, compare.DuplicateLeft);
-      AddDuplicates(rightDuplicates, compare.DuplicateRight);
+      Task.WaitAll(tasks);
 
-      AddMovedOrChanged();
+      foreach (var t in tasks)
+        treeView1.Nodes[0].Nodes.Add(t.Result);
 
-      rootNode.Expand();
-
-      //// TODO: Move into file comparison
-      //foreach (string file in compare.Filenames)
-      //{
-      //  FileCompareData lFile = null;
-      //  FileCompareData rFile = null;
-
-      //  if (left.ContainsKey(file))
-      //    lFile = left[file];
-
-      //  if (right.ContainsKey(file))
-      //    rFile = right[file];
-
-      //  if (lFile != null && rFile != null)
-      //    AddMoveOrChanged(lFile, rFile);
-      //  else if (lFile != null)
-      //    AddSideOnly(lFile, true);
-      //  else if (rFile != null)
-      //    AddSideOnly(rFile, false);
-      //}
-
-      //foreach (var duplicate in compare.DuplicateLeft)
-      //  AddMoveOrChanged(duplicate.left, duplicate.right);
-
-      //// TODO: Enable/disable cross compare
-      //foreach (var crossCompare in compare.CrossList)
-      //  AddMoveOrChanged(crossCompare.left, crossCompare.right, crossCompare.similarity);
-
+      System.GC.Collect();
+      treeView1.Nodes[0].Expand();
       btStartRefresh.Enabled = true;
+
       ResumeLayout();
     }
 
-    private void AddMovedOrChanged()
+    private TreeNode AddMoved()
     {
-      var rootNode = treeView1.Nodes[0];
-      var moved = rootNode.Nodes.Add("Moved Files");
-      var changed = rootNode.Nodes.Add("Changed Files");
-
-      Dictionary<string, TreeNode> movedGroup = new Dictionary<string, TreeNode>();
-      Dictionary<string, TreeNode> changedGroup = new Dictionary<string, TreeNode>();
+      CrossCompareSet movedSet = new CrossCompareSet(1f);
       foreach (var filename in compare.Filenames)
       {
-        FileCompareData left;
-        compare.LeftFiles.TryGetValue(filename, out left);
+        FileCompareData left = Find(filename, compare.LeftFiles);
+        FileCompareData right = Find(filename, compare.RightFiles);
 
-        FileCompareData right;
-        compare.RightFiles.TryGetValue(filename, out right); // no pun intented
-
-        if (left != null && right != null)
-        {
-          if (!left.localPath.Equals(right.localPath))
-          {
-            if (!movedGroup.ContainsKey(left.localPath))
-            {
-              movedGroup.Add(left.localPath, new TreeNode(left.localPath, 1, 1));
-              moved.Nodes.Add(movedGroup[left.localPath]);
-            }
-
-            movedGroup[left.localPath].Nodes.Add(new MovedNode(left, right, 1));
-          }
-
-          if (!left.hash.SequenceEqual(right.hash))
-          {
-            if (!changedGroup.ContainsKey(left.localPath))
-            {
-              changedGroup.Add(left.localPath, new TreeNode(left.localPath, 1, 1));
-              changed.Nodes.Add(changedGroup[left.localPath]);
-            }
-
-            changedGroup[left.localPath].Nodes.Add(new ChangedNode(left, right, 1));
-          }
-        }
+        if (left != null && right != null && !left.localPath.Equals(right.localPath) && left.hash.Equals(right.hash))
+          movedSet.Add(new CrossCompare(left, right, 1f));
       }
+
+      return AddCompareNodes(new TreeNode("Moved Files", 2, 2), movedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
     }
 
-    private void AddDuplicates(TreeNode root, HashSet<CrossCompare> cross)
+    private TreeNode AddChanged()
     {
-      Dictionary<string, TreeNode> duplicateNodes = new Dictionary<string, TreeNode>();
-      foreach (var file in cross)
+      CrossCompareSet changedSet = new CrossCompareSet(1f);
+      foreach (var filename in compare.Filenames)
       {
-        if (!duplicateNodes.ContainsKey(file.left.localPath))
-        {
-          var node = new TreeNode(file.left.localPath, 1, 1);
-          root.Nodes.Add(node);
-          duplicateNodes.Add(file.left.localPath, node);
-        }
+        FileCompareData left = Find(filename, compare.LeftFiles);
+        FileCompareData right = Find(filename, compare.RightFiles);
 
-        duplicateNodes[file.left.localPath].Nodes.Add(new DuplicateNode(file.left, file.right, 1));
+        if (left != null && right != null && left.localPath.Equals(right.localPath) && !left.hash.Equals(right.hash))
+          changedSet.Add(new CrossCompare(left, right, 1f));
+      }
+
+      return AddCompareNodes(new TreeNode("Changed Files", 3, 3), changedSet, (CrossCompare compare) => { return new ChangedNode(compare, 3); });
+    }
+
+    private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
+    private TreeNode AddSimilar() => AddCompareNodes(new TreeNode("Similar Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new SimilarNode(compare, 4); });
+
+    private TreeNode AddCompareNodes(TreeNode root, CrossCompareSet set, Func<CrossCompare, TreeNode> constructor)
+    {
+      // sort directories
+      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(new StringCompareSizeFirst());
+
+      // sort filenames
+      var nameFirst = set.ToArray();
+      Array.Sort(nameFirst, new CrossCompareNameFirst());
+
+      // create directory nodes
+      foreach (var file in nameFirst)
+      {
+        var smallerPath = file.left.SmallerLocalPath(file.right);
+        if (!duplicatePath.ContainsKey(smallerPath.localPath))
+          duplicatePath.Add(smallerPath.localPath, new TreeNode(smallerPath.localPath, 1, 1));
+      }
+
+      // add file nodes
+      foreach (var file in nameFirst)
+      {
+        var smallerPath = file.left.SmallerLocalPath(file.right);
+        duplicatePath[smallerPath.localPath].Nodes.Add(constructor(file));
+      }
+
+      // add directory nodes to the tree
+      foreach (var node in duplicatePath)
+        root.Nodes.Add(node.Value);
+
+      return root;
+    }
+
+    private void MouseClickTreeView(object sender, MouseEventArgs e)
+    {
+      if (e.Button == MouseButtons.Right)
+        treeView1.SelectedNode = treeView1.GetNodeAt(e.X, e.Y);
+    }
+
+    private class StringCompareSizeFirst : IComparer<string>
+    {
+      public int Compare(string x, string y) => x.Length < y.Length ? -1 : (x.Length > y.Length) ? 1 : string.Compare(x, y, true);
+    }
+
+    private class CrossCompareNameFirst : IComparer<CrossCompare>
+    {
+      public int Compare(CrossCompare x, CrossCompare y)
+      {
+        var smallerX = x.left.SmallerLocalPath(x.right);
+        var smallerY = y.left.SmallerLocalPath(y.right);
+        if (smallerX.name.Equals(smallerY.name))
+          return x.CompareTo(y);
+        else
+          return string.Compare(smallerX.name, smallerY.name, true);
       }
     }
 
-    //private void AddSideOnly(FileCompareData fileCompare, bool isLeft)
-    //{
-    //  LeftOnly leftOnly = new LeftOnly();
-    //  leftOnly.LeftFile = fileCompare;
-    //  leftOnly.IsLeft = isLeft;
-    //  leftOnly.RightRootPath = isLeft ? compare.RightPath : compare.LeftPath;
-    //  leftOnly.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
-
-    //  flowPanel.Controls.Add(leftOnly);
-    //  leftOnly.Width = flowPanel.Width - 48;
-    //}
-
-    //private void AddMoveOrChanged(FileCompareData lFile, FileCompareData rFile, float similarity = 1f)
-    //{
-    //  if (!lFile.localPath.Equals(rFile.localPath) || !lFile.hash.SequenceEqual(rFile.hash))
-    //  {
-    //    MovedPath movedPath = new MovedPath();
-    //    movedPath.LeftFile = lFile;
-    //    movedPath.RightFile = rFile;
-    //    movedPath.Similarity = similarity;
-    //    movedPath.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
-
-    //    flowPanel.Controls.Add(movedPath);
-    //    movedPath.Width = flowPanel.Width - 48;
-    //  }
-    //}
-
+    private FileCompareData Find(string filename, Dictionary<string, FileCompareData> dictionary)
+    {
+      FileCompareData file;
+      dictionary.TryGetValue(filename, out file);
+      return file;
+    }
   }
 }

@@ -1,10 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Windows.Forms;
-using System.Threading;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.IO;
 using System.Text;
+using System.Windows.Forms;
 
 namespace RefactorMuch.Configuration
 {
@@ -14,7 +13,7 @@ namespace RefactorMuch.Configuration
 
     public JObject doc { get; private set; }
 
-    public ConfigData(string path)
+    private ConfigData(string path)
     {
       this.path = path;
 
@@ -25,7 +24,7 @@ namespace RefactorMuch.Configuration
       }
       catch (IOException)
       {
-        doc = JObject.FromObject(new {});
+        doc = JObject.FromObject(new { });
       }
       catch (Exception exc)
       {
@@ -39,5 +38,14 @@ namespace RefactorMuch.Configuration
       using (TextWriter writer = new StreamWriter(File.Create(path)))
         writer.Write(doc.ToString());
     }
+
+    public static ConfigData instance = null;
+    public static ConfigData GetInstance()
+    {
+      if (instance == null)
+        instance = new ConfigData(Application.LocalUserAppDataPath + "\\app-config.json");
+      return instance;
+    }
+
   }
 }
