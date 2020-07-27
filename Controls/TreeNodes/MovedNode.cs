@@ -9,7 +9,10 @@ namespace RefactorMuch.Controls
   {
     public MovedNode(CrossCompare compare, int imageIndex) : base(compare, imageIndex)
     {
-      Text = $"{compare.left.name} moved ({compare.right.localPath} => {compare.left.localPath})";
+      if (compare.left.localPath.Equals(compare.right.localPath))
+        Text = $"{compare.left.name} renamed {compare.right.name} => {compare.left.localPath}";
+      else
+        Text = $"{compare.left.name} moved ({compare.left.absolutePath} => {compare.right.absolutePath})";
     }
 
     private void Move(bool isLeft)

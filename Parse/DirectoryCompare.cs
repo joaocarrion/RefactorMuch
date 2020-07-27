@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace RefactorMuch.Parse
 {
@@ -24,8 +21,10 @@ namespace RefactorMuch.Parse
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(1f);
 
-    // TODO: In the future, semantic comparison would be nice instead
+    // TODO: In the future, semantic comparison would be nice
     public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.45f);
 
     public int Progress => ProgressCount();
@@ -50,53 +49,38 @@ namespace RefactorMuch.Parse
       crossCompareIndex = 0;
       totalCrossCompare = 0;
 
-      var taskLeft = Task.Run(() =>
+      CompareSets left = new CompareSets
       {
-        var files = ListFiles(LeftPath);
-        totalFiles += files.Count;
+        Path = LeftPath,
+        FileList = null,
+        Files = LeftFiles,
+        Duplicates = DuplicateLeft,
+      };
 
-        CompareSets left = new CompareSets
-        {
-          FileList = files,
-          CrossCompareList = CrossSet,
-          Duplicates = DuplicateLeft,
-          Filenames = Filenames,
-          Files = LeftFiles,
-          Path = LeftPath
-        };
-
-        return ParseFiles(left);
-      });
-
-      var taskRight = Task.Run(() =>
+      CompareSets right = new CompareSets
       {
-        var files = ListFiles(RightPath);
-        totalFiles += files.Count;
+        FileList = null,
+        Path = RightPath,
+        Files = RightFiles,
+        Duplicates = DuplicateRight,
+      };
 
-        CompareSets right = new CompareSets
-        {
-          FileList = files,
-          CrossCompareList = CrossSet,
-          Duplicates = DuplicateRight,
-          Filenames = Filenames,
-          Files = RightFiles,
-          Path = RightPath
-        };
+      // Parse files left and right
+      var tasks = new Task[] { Task.Run(() => ParseFiles(left)), Task.Run(() => ParseFiles(right)) };
+      await Task.WhenAll(tasks);
 
-        return ParseFiles(right);
-      });
+      // compare left with left, right with right and then left with right
+      totalCrossCompare = left.Files.Count * left.Files.Count + right.Files.Count * right.Files.Count + left.Files.Count * right.Files.Count;
 
-      var leftSet = await taskLeft;
-      var rightSet = await taskRight;
+      var crossCompareTasks = new Task[]
+      {
+        Task.Run(() => { CrossCompareSelf(left); }),
+        Task.Run(() => { CrossCompareSelf(right); }),
+        Task.Run(() => { CrossCompare(left, right); })
+      };
 
-      totalCrossCompare = leftSet.Files.Count * leftSet.Files.Count + rightSet.Files.Count * rightSet.Files.Count + leftSet.Files.Count * rightSet.Files.Count;
-      var taskCompareLeft = Task.Run(() => { CrossCompare(leftSet, leftSet); });
-      var taskCompareRight = Task.Run(() => { CrossCompare(rightSet, rightSet); });
-      var taskCompareLeftRight = Task.Run(() => { CrossCompare(leftSet, rightSet); });
-
-      await taskCompareLeft;
-      await taskCompareRight;
-      await taskCompareLeftRight;
+      // wait until done
+      await Task.WhenAll(crossCompareTasks);
 
       totalFiles = 0;
       fileScanIndex = 0;
@@ -106,100 +90,99 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
-    private object debugLock = new object();
-
-    private void FindDuplicates(CompareSets set)
+    private void CrossCompareSelf(CompareSets set)
     {
-      // DEBUG
-      lock (debugLock)
+      var tasks = new List<Task>();
+      foreach (var left in set.AllFiles)
       {
-        var comparable = (from file in set.AllFiles
-                          where file.name == "GameSessionActivator.cs"
-                          select file).ToArray();
-
-        if (comparable.Length == 2)
+        foreach (var right in set.AllFiles)
         {
-          CrossCompare a = new CrossCompare(comparable[0], comparable[1], 1f);
-          CrossCompare b = new CrossCompare(comparable[1], comparable[0], 1f);
-
-          var equals = a.Equals(b);
-          var compareTo = a.CompareTo(b);
-          var codeA = a.GetHashCode();
-          var codeB = b.GetHashCode();
-          var fCompare = new bool[] { a.left == b.left, a.right == b.left, a.left == b.right, a.right == b.right };
-
-          SortedSet<CrossCompare> sortedA = new SortedSet<CrossCompare>();
-          sortedA.Add(a);
-          sortedA.Add(b);
-
-          foreach (var sorted in sortedA)
+          // same file on both sets
+          if (left.Equals(right)) continue;
+          // same file contents
+          else if (left.hash.Equals(right.hash))
+            // renamed or duplicate
+            // if (!left.localPath.Equals(right.localPath) || !left.name.Equals(right.name)) // one will always be different
+            lock (set.Duplicates) { set.Duplicates.Add(new CrossCompare(left, right, 1f)); }
+          else tasks.Add(Task.Run(() =>
           {
-            Console.WriteLine(sorted.ToString());
-          }
+            // may be an inner refactory
+            var cc = new CrossCompare(left, right);
+            lock (CrossSet) CrossSet.Add(cc);
+          }));
         }
       }
 
-      foreach (var leftFile in set.AllFiles)
-      {
-        foreach (var rightFile in set.AllFiles)
-        {
-          if (leftFile.Equals(rightFile)) continue;
-          
-          if (leftFile.hash.Equals(rightFile.hash))
-            lock (set.Duplicates) { set.Duplicates.Add(new CrossCompare(leftFile, rightFile, 1f)); }
-        }
-      }
-
-      lock (debugLock)
-      {
-
-      }
+      Task.WaitAll(tasks.ToArray());
     }
 
     private void CrossCompare(CompareSets leftSet, CompareSets rightSet)
     {
-      // find all duplicates on set
-      if (leftSet == rightSet)
-        FindDuplicates(leftSet);
-
-      foreach (var leftFile in leftSet.AllFiles)
+      var tasks = new List<Task>();
+      foreach (var left in leftSet.AllFiles)
       {
-        foreach (var rightFile in rightSet.AllFiles)
+        foreach (var right in rightSet.AllFiles)
         {
-          // ignore same file
-          if (leftFile.Equals(rightFile))
-            continue;
-
-          // ignore equals (moved detection can show them elsewhere
-          if (leftFile.hash.Equals(rightFile.hash))
-            continue;
-
-          // find similar
-          var cc = new CrossCompare(leftFile, rightFile);
-
-          // add similar files
-          lock (leftSet) { leftSet.CrossCompareList.Add(cc); }
+          if (left.name.Equals(right.name)) // same name
+          {
+            if (left.hash.Equals(right.hash)) // same contents
+            {
+              if (!left.localPath.Equals(right.localPath)) // different path => moved
+                // same file different local paths
+                lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+            }
+            else // different contents... compare
+            {
+              tasks.Add(Task.Run(() =>
+              {
+                var changedCompare = new CrossCompare(left, right);
+                lock (ChangedSet) ChangedSet.Add(changedCompare);
+              }));
+            }
+          }
+          else if (left.hash.Equals(right.hash)) // different name, same content, renamed
+            lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+          // Different name/contents, check if it may be a refactor
+          else tasks.Add(Task.Run(() =>
+          {
+            var cc = new CrossCompare(left, right);
+            lock (CrossSet) CrossSet.Add(cc);
+          }));
         }
       }
+
+      Task.WaitAll(tasks.ToArray());
     }
 
-    private CompareSets ParseFiles(CompareSets set)
+    private void ParseFiles(CompareSets set)
     {
+      // scan directories
+      var files = ListFiles(set.Path);
+      
+      // set files
+      set.FileList = files;
+      totalFiles += files.Count;
+
+      int wt, cpt;
+      ThreadPool.GetMaxThreads(out wt, out cpt);
+
+      // files file comparision
+      var tasks = new List<Task>();
       foreach (var file in set.FileList)
-      {
-        // Could create a task
-        var data = FileCompareData.FromFile(file, set.Path);
-        lock (set)
+        tasks.Add(Task.Run(() =>
         {
-          set.AllFiles.Add(data);
-          set.Files[data.name] = data;
-          set.Filenames.Add(data.name);
-        }
+          var data = FileCompareData.FromFile(file, set.Path);
+          lock (set)
+          {
+            set.AllFiles.Add(data);
+            set.Files[data.absolutePath] = data;
+            Filenames.Add(data.name);
+          }
 
-        ++fileScanIndex;
-      }
+          ++fileScanIndex;
+        }));
 
-      return set;
+      Task.WaitAll(tasks.ToArray());
     }
 
     private List<string> ListFiles(string path)

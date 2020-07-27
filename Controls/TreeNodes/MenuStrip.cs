@@ -98,7 +98,7 @@ namespace RefactorMuch.Controls
     }
   }
 
-  public partial class SimilarNode
+  public partial class RefactoredNode
   {
     private static object menuLock = new object();
     private static MenuStrip menuStrip = null;
@@ -114,7 +114,7 @@ namespace RefactorMuch.Controls
         menuItems[0].Click += Diff;
       }
 
-      private void Diff(object sender, System.EventArgs e) => ((SimilarNode)((TreeView)SourceControl).SelectedNode).Diff();
+      private void Diff(object sender, System.EventArgs e) => ((RefactoredNode)((TreeView)SourceControl).SelectedNode).Diff();
     }
     protected override ContextMenuStrip GetMenu()
     {

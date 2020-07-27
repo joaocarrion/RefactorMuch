@@ -134,7 +134,7 @@ namespace RefactorMuch
         () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
         () => { return AddMoved(); },
         () => { return AddChanged(); },
-        () => { return AddSimilar(); }
+        () => { return AddRefactored(); }
       });
 
       Task.WaitAll(tasks);
@@ -149,38 +149,10 @@ namespace RefactorMuch
       ResumeLayout();
     }
 
-    private TreeNode AddMoved()
-    {
-      CrossCompareSet movedSet = new CrossCompareSet(1f);
-      foreach (var filename in compare.Filenames)
-      {
-        FileCompareData left = Find(filename, compare.LeftFiles);
-        FileCompareData right = Find(filename, compare.RightFiles);
-
-        if (left != null && right != null && !left.localPath.Equals(right.localPath) && left.hash.Equals(right.hash))
-          movedSet.Add(new CrossCompare(left, right, 1f));
-      }
-
-      return AddCompareNodes(new TreeNode("Moved Files", 2, 2), movedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
-    }
-
-    private TreeNode AddChanged()
-    {
-      CrossCompareSet changedSet = new CrossCompareSet(1f);
-      foreach (var filename in compare.Filenames)
-      {
-        FileCompareData left = Find(filename, compare.LeftFiles);
-        FileCompareData right = Find(filename, compare.RightFiles);
-
-        if (left != null && right != null && left.localPath.Equals(right.localPath) && !left.hash.Equals(right.hash))
-          changedSet.Add(new CrossCompare(left, right, 1f));
-      }
-
-      return AddCompareNodes(new TreeNode("Changed Files", 3, 3), changedSet, (CrossCompare compare) => { return new ChangedNode(compare, 3); });
-    }
-
+    private TreeNode AddMoved() => AddCompareNodes(new TreeNode("Moved Files", 2, 2), compare.MovedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
+    private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 3); });
     private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
-    private TreeNode AddSimilar() => AddCompareNodes(new TreeNode("Similar Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new SimilarNode(compare, 4); });
+    private TreeNode AddRefactored() => AddCompareNodes(new TreeNode("Refactored? Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
 
     private TreeNode AddCompareNodes(TreeNode root, CrossCompareSet set, Func<CrossCompare, TreeNode> constructor)
     {
@@ -202,8 +174,11 @@ namespace RefactorMuch
       // add file nodes
       foreach (var file in nameFirst)
       {
-        var smallerPath = file.left.SmallerLocalPath(file.right);
-        duplicatePath[smallerPath.localPath].Nodes.Add(constructor(file));
+        var cc = file;
+        if (file.left.SmallerLocalPath(file.right) != file.left)
+          cc = new CrossCompare(file.right, file.left, file.similarity);
+
+        duplicatePath[cc.left.localPath].Nodes.Add(constructor(cc));
       }
 
       // add directory nodes to the tree

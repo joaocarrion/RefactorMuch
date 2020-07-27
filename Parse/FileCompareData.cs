@@ -86,6 +86,7 @@ namespace RefactorMuch.Parse
     // comparison to enter sorted lists/sets
     public int CompareTo(FileCompareData other) => absolutePath.CompareTo(other.absolutePath);
     public FileCompareData SmallerLocalPath(FileCompareData other) => localPath.Length < other.localPath.Length ? this : other;
+    public bool DifferentLocalFile(FileCompareData right) => !name.Equals(right.name) || !hash.Equals(right.hash) || !localPath.Equals(right.localPath);
   }
 }
 
