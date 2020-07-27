@@ -1,9 +1,9 @@
 ﻿using RefactorMuch.Parse;
 using System.Windows.Forms;
 
-namespace RefactorMuch.Controls
+namespace RefactorMuch.Controls.TreeNodes
 {
-  public abstract class CrossCompareNode: TreeNode
+  public class CrossCompareNode: TreeNode
   {
     protected CrossCompare compare;
 
@@ -12,9 +12,14 @@ namespace RefactorMuch.Controls
       this.compare = compare;
       ImageIndex = imageIndex;
       SelectedImageIndex = imageIndex;
+
       ContextMenuStrip = GetMenu();
+      Text = this.compare.ToString();
+
+      Nodes.Add(new FileDataNode(compare.left, imageIndex));
+      Nodes.Add(new FileDataNode(compare.right, imageIndex));
     }
 
-    protected abstract ContextMenuStrip GetMenu();
+    protected virtual ContextMenuStrip GetMenu() { return null; }
   }
 }

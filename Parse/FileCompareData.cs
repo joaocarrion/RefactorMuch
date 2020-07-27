@@ -20,11 +20,13 @@ namespace RefactorMuch.Parse
     public string absolutePath;
     public List<string> lineHash = new List<string>();
     public string parseError;
+    public string basePath;
 
     private static object setLock = new object();
     private static Dictionary<string, RuleSet> ruleSets = null;
     private static RuleSet fullSet = null;
     private static RuleSet lineSet = null;
+    private static RuleSet normalizeSet = null;
 
     protected FileCompareData()
     {
@@ -40,6 +42,8 @@ namespace RefactorMuch.Parse
 
         fullSet = ruleSets["FileCompare"];
         lineSet = ruleSets["LineCompare"];
+        if (ruleSets.ContainsKey("Normalize"))
+          normalizeSet = ruleSets["Normalize"];
       }
     }
 
@@ -54,12 +58,16 @@ namespace RefactorMuch.Parse
       data.path = Path.GetDirectoryName(file);
       data.localPath = data.path.Replace(basePath, "");
       data.lastChange = File.GetLastWriteTime(file);
+      data.basePath = basePath;
 
       try
       {
-        using (var bs = new StreamReader(File.OpenRead(file)))
+        using (var sr = new StreamReader(File.OpenRead(file), true))
         {
-          var fileString = bs.ReadToEnd();
+          var fileString = sr.ReadToEnd();
+          if (normalizeSet != null)
+            fileString = normalizeSet.Execute(fileString);
+
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
           var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
                              where line.Length > 0
@@ -79,7 +87,7 @@ namespace RefactorMuch.Parse
       return data;
     }
 
-    public override string ToString() => $"File: {name}, Path: ${absolutePath}, Lines: {lineHash.Count}";
+    public override string ToString() => $"File: {name}, LocalPath: {localPath}, Path: {absolutePath}, Lines: {lineHash.Count}";
     public override int GetHashCode() => absolutePath.GetHashCode();
     public override bool Equals(object obj) => string.Compare(absolutePath, ((FileCompareData)obj).absolutePath, true) == 0;
 

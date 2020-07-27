@@ -22,10 +22,11 @@ namespace RefactorMuch.Parse
     public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(0f, 1f);
+    public CrossCompareSet RenamedSet { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.51f);
 
     // TODO: In the future, semantic comparison would be nice
-    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.45f);
 
     public int Progress => ProgressCount();
 
@@ -38,6 +39,7 @@ namespace RefactorMuch.Parse
       LeftPath = left;
       RightPath = right;
       FileFilter = fileFilter;
+      ThreadPool.SetMaxThreads(7, 3);
     }
 
     public async Task Parse()
@@ -90,6 +92,11 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
+    private Task AddToSet(CrossCompareSet set, CrossCompare compare)
+    {
+      return Task.Run(() => { lock (set) set.Add(compare); });
+    }
+
     private void CrossCompareSelf(CompareSets set)
     {
       var tasks = new List<Task>();
@@ -100,10 +107,14 @@ namespace RefactorMuch.Parse
           // same file on both sets
           if (left.Equals(right)) continue;
           // same file contents
-          else if (left.hash.Equals(right.hash))
-            // renamed or duplicate
-            // if (!left.localPath.Equals(right.localPath) || !left.name.Equals(right.name)) // one will always be different
-            lock (set.Duplicates) { set.Duplicates.Add(new CrossCompare(left, right, 1f)); }
+          if (left.hash.Equals(right.hash))
+          {
+            if (left.name.Equals(right.name))
+              // duplicate
+              tasks.Add(AddToSet(set.Duplicates, new CrossCompare(left, right, 1f)));
+            else
+              tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
+          }
           else tasks.Add(Task.Run(() =>
           {
             // may be an inner refactory
@@ -129,7 +140,7 @@ namespace RefactorMuch.Parse
             {
               if (!left.localPath.Equals(right.localPath)) // different path => moved
                 // same file different local paths
-                lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+                tasks.Add(AddToSet(MovedSet, new CrossCompare(left, right, 1f)));
             }
             else // different contents... compare
             {
@@ -140,8 +151,8 @@ namespace RefactorMuch.Parse
               }));
             }
           }
-          else if (left.hash.Equals(right.hash)) // different name, same content, renamed
-            lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+          else if (left.hash.Equals(right.hash)) // different name, same content, may be renamed
+            tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
           // Different name/contents, check if it may be a refactor
           else tasks.Add(Task.Run(() =>
           {

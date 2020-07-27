@@ -16,16 +16,25 @@ namespace RefactorMuch.Parse
 
     public CrossCompare(FileCompareData left, FileCompareData right)
     {
-      this.left = left;
-      this.right = right;
+      var lData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? left : right;
+      var rData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? right : left;
+
+      this.left = lData;
+      this.right = rData;
+
       CreateCompareString();
       CrossCompareFiles();
     }
+
     public CrossCompare(FileCompareData left, FileCompareData right, float similarity)
     {
-      this.left = left;
-      this.right = right;
+      var lData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? left : right;
+      var rData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? right : left;
+
+      this.left = lData;
+      this.right = rData;
       this.similarity = similarity;
+
       CreateCompareString();
     }
 
@@ -54,7 +63,16 @@ namespace RefactorMuch.Parse
     }
 
 
-    public int CompareTo(CrossCompare other) => string.Compare(compareString, other.compareString, true);
+    public int CompareTo(CrossCompare other)
+    {
+      var f = "SimpleController.cs";
+      if ((left.name == f || right.name == f) && (other.left.name == f || other.right.name == f))
+      {
+
+      }
+
+      return string.Compare(compareString, other.compareString, true);
+    }
     public override bool Equals(object obj) => ((CrossCompare)obj).compareString.Equals(compareString);
     public override int GetHashCode() => compareString.GetHashCode();
     public override string ToString() => $"Similarity {Math.Round(similarity * 100, 0):0}%, Left: {left.name,-25}, Right: {right.name,-25}, Local Path: {left.localPath} ";

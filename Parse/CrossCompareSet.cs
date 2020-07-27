@@ -5,12 +5,14 @@ namespace RefactorMuch.Parse
 {
   public class CrossCompareSet : ISet<CrossCompare>
   {
-    private float minValue = 0;
+    private float minValue = 0f;
+    private float maxValue = 1.1f;
     private SortedSet<CrossCompare> set = new SortedSet<CrossCompare>();
-    
-    public CrossCompareSet(float minValue)
+
+    public CrossCompareSet(float minValue, float maxValue = 1.1f)
     {
       this.minValue = minValue;
+      this.maxValue = maxValue;
     }
 
     public int Count => set.Count;
@@ -18,7 +20,7 @@ namespace RefactorMuch.Parse
     public bool IsReadOnly => false;
     public override string ToString() => $"Cross Compare List: {set.Count}";
 
-    bool ISet<CrossCompare>.Add(CrossCompare item) => item.similarity >= minValue ? set.Add(item) : false;
+    bool ISet<CrossCompare>.Add(CrossCompare item) => item.similarity >= minValue && item.similarity < maxValue ? set.Add(item) : false;
     public void UnionWith(IEnumerable<CrossCompare> other) => set.UnionWith(other);
     public void IntersectWith(IEnumerable<CrossCompare> other) => set.IntersectWith(other);
     public void ExceptWith(IEnumerable<CrossCompare> other) => set.ExceptWith(other);

@@ -56,6 +56,17 @@
           "expression": " {2}|\\{|\\}|(\\r)"
         }
       ]
+    },
+    {
+      "name": "Normalize",
+      "description": "Normalize files for comparison",
+      "rules": [
+        {
+          "name": "Normalize",
+          "description": "Normalize files for comparison",
+          "expression": "\\r"
+        }
+      ]
     }
   ]
 }

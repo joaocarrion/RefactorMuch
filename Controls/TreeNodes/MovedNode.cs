@@ -1,18 +1,19 @@
 ﻿using RefactorMuch.Parse;
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Windows.Forms;
 
-namespace RefactorMuch.Controls
+namespace RefactorMuch.Controls.TreeNodes
 {
   public partial class MovedNode : CrossCompareNode
   {
     public MovedNode(CrossCompare compare, int imageIndex) : base(compare, imageIndex)
     {
-      if (compare.left.localPath.Equals(compare.right.localPath))
-        Text = $"{compare.left.name} renamed {compare.right.name} => {compare.left.localPath}";
-      else
-        Text = $"{compare.left.name} moved ({compare.left.absolutePath} => {compare.right.absolutePath})";
+      Text = $"{compare.left.name} moved ({compare.left.localPath} => {compare.right.localPath})";
+      ContextMenuStrip = new ContextMenuStrip();
+      ContextMenuStrip.Items.Add($"Move left: {compare.left.localPath}", null, MoveLeft);
+      ContextMenuStrip.Items.Add($"Move right: {compare.right.localPath}", null, MoveRight);
     }
 
     private void Move(bool isLeft)
@@ -20,29 +21,37 @@ namespace RefactorMuch.Controls
       FileCompareData to = isLeft ? compare.left : compare.right;
       FileCompareData from = isLeft ? compare.right : compare.left;
 
+      var sourceDir = from.path;
+      var destination = $"{from.basePath}{to.localPath}\\{from.name}";
+
       try
       {
-        if (DialogHelper.QuestionDialog($"Are you sure you want to move {from.name} to {to.path}") == DialogResult.Yes)
+        if (DialogHelper.QuestionDialog($"Are you sure you want to move {from.name} to {destination}") == DialogResult.Yes)
         {
-          File.Move(from.absolutePath, to.absolutePath);
-          if (Directory.GetFiles(from.path).Length == 0 && Directory.GetDirectories(from.path).Length == 0)
+          if (!Directory.Exists(Path.GetDirectoryName(destination)))
+            Directory.CreateDirectory(Path.GetDirectoryName(destination));
+
+          File.Move(from.absolutePath, destination);
+          if (Directory.GetFiles(sourceDir).Length == 0 && Directory.GetDirectories(sourceDir).Length == 0)
           {
-            if (DialogHelper.QuestionDialog($"Directory {from.path} is Empty. Remove directory?") == DialogResult.Yes)
-              Directory.Delete(from.path);
+            if (DialogHelper.QuestionDialog($"Directory {sourceDir} is Empty. Remove directory?") == DialogResult.Yes)
+              Directory.Delete(sourceDir);
           }
 
           // remove node from view
-          Remove();
+          if (Parent.Nodes.Count == 1)
+            Parent.Remove();
+          else
+            Remove();
         }
       }
       catch (Exception exc)
       {
-        DialogHelper.ErrorDialog($"Error deleting file {from.absolutePath}: {exc.Message}");
+        DialogHelper.ErrorDialog($"Error moving file {from.absolutePath}: {exc.Message}");
       }
     }
 
-    private void MoveLeft() => Move(true);
-    private void MoveRight() => Move(false);
-    private void View() => Tools.GetInstance().ToolDictionary[Tool.ToolType.View].Run(compare.left.absolutePath);
+    private void MoveLeft(object sender, EventArgs e) => Move(true);
+    private void MoveRight(object sender, EventArgs e) => Move(false);
   }
 }
