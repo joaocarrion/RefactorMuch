@@ -17,11 +17,11 @@ namespace RefactorMuch.Parse
       Description = descritption;
     }
 
-    public string Execute(string source, string[] parameters = null)
+    public string Execute(string source)
     {
       string result = source;
       foreach (var rule in Rules)
-        result = rule.Execute(result, parameters);
+        result = rule.Execute(result);
 
       return result;
     }
@@ -35,7 +35,8 @@ namespace RefactorMuch.Parse
         ruleArray.Add(new JObject(
           new JProperty("name", rule.Name),
           new JProperty("descritpion", rule.Description),
-          new JProperty("expression", rule.Expression)
+          new JProperty("expression", rule.Expression),
+          new JProperty("replace", rule.Replace)
           ));
     }
 
@@ -48,7 +49,8 @@ namespace RefactorMuch.Parse
         {
           Name = value.Value<string>("name"),
           Description = value.Value<string>("description"),
-          Expression = value.Value<string>("expression")
+          Expression = value.Value<string>("expression"),
+          Replace = value.ContainsKey("replace") ? value.Value<string>("replace") : ""
         });
 
       return set;

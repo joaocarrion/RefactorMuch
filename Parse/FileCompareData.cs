@@ -25,6 +25,7 @@ namespace RefactorMuch.Parse
     private static Dictionary<string, RuleSet> ruleSets = null;
     private static RuleSet fullSet = null;
     private static RuleSet lineSet = null;
+    private static RuleSet normalizeSet = null;
 
     protected FileCompareData()
     {
@@ -40,6 +41,8 @@ namespace RefactorMuch.Parse
 
         fullSet = ruleSets["FileCompare"];
         lineSet = ruleSets["LineCompare"];
+        if (ruleSets.ContainsKey("Normalize"))
+          normalizeSet = ruleSets["Normalize"];
       }
     }
 
@@ -57,9 +60,12 @@ namespace RefactorMuch.Parse
 
       try
       {
-        using (var bs = new StreamReader(File.OpenRead(file)))
+        using (var sr = new StreamReader(File.OpenRead(file), true))
         {
-          var fileString = bs.ReadToEnd();
+          var fileString = sr.ReadToEnd();
+          if (normalizeSet != null)
+            fileString = normalizeSet.Execute(fileString);
+
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
           var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
                              where line.Length > 0

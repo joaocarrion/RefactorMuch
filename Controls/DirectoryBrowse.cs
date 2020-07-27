@@ -119,6 +119,7 @@ namespace RefactorMuch
       var exts = "*.cs";
       string leftPath = cbLeftDirectory.Text;
       string rightPath = cbRightDirectory.Text;
+      treeView1.Nodes.Clear();
 
       // Directory compare
       compare = new DirectoryCompare(leftPath, rightPath, exts);

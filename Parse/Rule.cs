@@ -11,6 +11,8 @@ namespace RefactorMuch.Parse
 
     public string Expression { get => regex.ToString(); set => regex = new Regex(value); }
 
+    public string Replace { get; set; } = "";
+
     public Rule() { }
 
     public Rule(string name, string description, string expression)
@@ -20,9 +22,9 @@ namespace RefactorMuch.Parse
       Expression = expression;
     }
 
-    public string Execute(string source, string[] parameters = null)
+    public string Execute(string source)
     {
-      return regex.Replace(source, "");
+      return regex.Replace(source, Replace);
     }
   }
 }

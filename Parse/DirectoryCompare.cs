@@ -22,7 +22,7 @@ namespace RefactorMuch.Parse
     public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(0f, 1f);
 
     // TODO: In the future, semantic comparison would be nice
     public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.45f);
