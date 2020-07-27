@@ -21,3 +21,7 @@ Current version: 0.1a
 ## FUTURE
 
 There is still much to do, this is still more an idea than an application, however, it helped me already to detect some refactored code in two very distinct lines of work in the same repository, each with their own refactors over the main branch.
+
+## Screenshots
+
+![alt text](Screenshots/screenshot-v0.1a.PNG)
