@@ -1,5 +1,6 @@
 ﻿using RefactorMuch.Parse;
 using System;
+using System.Runtime.Remoting.Contexts;
 using System.Windows.Forms;
 
 namespace RefactorMuch.Controls.TreeNodes
@@ -11,7 +12,7 @@ namespace RefactorMuch.Controls.TreeNodes
       Text = $"{Math.Round(compare.similarity * 100, 0):00}%: {compare.left.name} => {compare.right.name} ({compare.left.localPath} => {compare.right.localPath})";
     }
 
-    private static MenuStrip menuStrip = null;
+    private static ContextMenuStrip menuStrip = null;
     private static object menuLock = new object();
 
     protected override ContextMenuStrip GetMenu()
@@ -20,9 +21,9 @@ namespace RefactorMuch.Controls.TreeNodes
         lock (menuLock)
           if (menuStrip == null)
           {
-            var items = new string[] { "Diff..." };
-            var actions = new Action<TreeView>[] { (view) => { ((RefactoredNode)view.SelectedNode).Diff(); } };
-            menuStrip = new MenuStrip(items, actions);
+            menuStrip = new ContextMenuStrip();
+            menuStrip.Items.Add("Diff...");
+            menuStrip.Items[0].Click += (sender, e) => { ((RefactoredNode)TreeView.SelectedNode).Diff(); };
           }
 
       return menuStrip;

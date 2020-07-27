@@ -20,6 +20,7 @@ namespace RefactorMuch.Parse
     public string absolutePath;
     public List<string> lineHash = new List<string>();
     public string parseError;
+    public string basePath;
 
     private static object setLock = new object();
     private static Dictionary<string, RuleSet> ruleSets = null;
@@ -57,6 +58,7 @@ namespace RefactorMuch.Parse
       data.path = Path.GetDirectoryName(file);
       data.localPath = data.path.Replace(basePath, "");
       data.lastChange = File.GetLastWriteTime(file);
+      data.basePath = basePath;
 
       try
       {

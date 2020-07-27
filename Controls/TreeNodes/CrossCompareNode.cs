@@ -9,15 +9,11 @@ namespace RefactorMuch.Controls.TreeNodes
 
     public CrossCompareNode(CrossCompare compare, int imageIndex)
     {
+      this.compare = compare;
       ImageIndex = imageIndex;
       SelectedImageIndex = imageIndex;
 
       ContextMenuStrip = GetMenu();
-
-      var left = compare.left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? compare.left : compare.right;
-      var right = compare.left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? compare.right : compare.left;
-      this.compare = new CrossCompare(left, right, compare.similarity);
-
       Text = this.compare.ToString();
 
       Nodes.Add(new FileDataNode(compare.left, imageIndex));

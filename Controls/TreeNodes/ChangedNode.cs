@@ -11,7 +11,7 @@ namespace RefactorMuch.Controls.TreeNodes
       Text = $"{Math.Round(compare.similarity * 100f)}%: {compare.left.name}";
     }
 
-    private static MenuStrip menuStrip = null;
+    private static ContextMenuStrip menuStrip = null;
     private static object menuLock = new object();
 
     protected override ContextMenuStrip GetMenu()
@@ -20,9 +20,9 @@ namespace RefactorMuch.Controls.TreeNodes
         lock (menuLock)
           if (menuStrip == null)
           {
-            var items = new string[] { "Diff..." };
-            var actions = new Action<TreeView>[] { (view) => { ((ChangedNode)view.SelectedNode).Diff(); } };
-            menuStrip = new MenuStrip(items, actions);
+            menuStrip = new ContextMenuStrip();
+            menuStrip.Items.Add("Diff...");
+            menuStrip.Items[0].Click += (sender, e) => { ((ChangedNode)TreeView.SelectedNode).Diff(); };
           }
 
       return menuStrip;

@@ -1,4 +1,6 @@
 ﻿using RefactorMuch.Parse;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 
 namespace RefactorMuch.Controls.TreeNodes
@@ -12,21 +14,24 @@ namespace RefactorMuch.Controls.TreeNodes
       {
         var menuItems = new ToolStripItem[]{
           Items.Add("Remove"),
-          Items.Add("View...")
+          Items.Add("View..."),
+          Items.Add("Open location...")
         };
 
         menuItems[0].Click += Remove;
         menuItems[1].Click += View;
+        menuItems[2].Click += OpenLocation;
       }
 
+      private void OpenLocation(object sender, System.EventArgs e) => ((FileDataNode)((TreeView)SourceControl).SelectedNode).OpenExplorer();
       private void Remove(object sender, System.EventArgs e) => ((FileDataNode)((TreeView)SourceControl).SelectedNode).RemoveFile();
       private void View(object sender, System.EventArgs e) => ((FileDataNode)((TreeView)SourceControl).SelectedNode).View();
     }
 
     private static object menuLock = new object();
-    private static MenuStrip menuStrip = null;
+    private static ContextMenuStrip menuStrip = null;
 
-    private static MenuStrip GetMenuStrip()
+    private static ContextMenuStrip GetMenuStrip()
     {
       lock (menuLock)
         if (menuStrip == null)
@@ -40,7 +45,7 @@ namespace RefactorMuch.Controls.TreeNodes
       ImageIndex = imageIndex;
       SelectedImageIndex = imageIndex;
 
-      Text = file.ToString();
+      Text = $"{file.name} ==> {file.absolutePath}";
       ContextMenuStrip = GetMenuStrip();
     }
 
@@ -51,5 +56,6 @@ namespace RefactorMuch.Controls.TreeNodes
     }
 
     private void View() => Tools.GetInstance().ToolDictionary[Tool.ToolType.View].Run(file.absolutePath);
+    private void OpenExplorer() => Process.Start("explorer.exe", $"\"{Path.GetDirectoryName(file.absolutePath)}\"");
   }
 }

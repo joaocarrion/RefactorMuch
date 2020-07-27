@@ -180,13 +180,7 @@ namespace RefactorMuch
 
       // add file nodes
       foreach (var file in nameFirst)
-      {
-        var cc = file;
-        if (file.left.SmallerLocalPath(file.right) != file.left)
-          cc = new CrossCompare(file.right, file.left, file.similarity);
-
-        duplicatePath[cc.left.localPath].Nodes.Add(constructor(cc));
-      }
+        duplicatePath[file.left.SmallerLocalPath(file.right).localPath].Nodes.Add(constructor(file));
 
       // add directory nodes to the tree
       foreach (var node in duplicatePath)

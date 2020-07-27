@@ -16,16 +16,25 @@ namespace RefactorMuch.Parse
 
     public CrossCompare(FileCompareData left, FileCompareData right)
     {
-      this.left = left;
-      this.right = right;
+      var lData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? left : right;
+      var rData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? right : left;
+
+      this.left = lData;
+      this.right = rData;
+
       CreateCompareString();
       CrossCompareFiles();
     }
+
     public CrossCompare(FileCompareData left, FileCompareData right, float similarity)
     {
-      this.left = left;
-      this.right = right;
+      var lData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? left : right;
+      var rData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? right : left;
+
+      this.left = lData;
+      this.right = rData;
       this.similarity = similarity;
+
       CreateCompareString();
     }
 
