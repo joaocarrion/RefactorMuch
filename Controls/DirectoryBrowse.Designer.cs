@@ -47,10 +47,9 @@
       // label1
       // 
       this.label1.AutoSize = true;
-      this.label1.Location = new System.Drawing.Point(4, 3);
-      this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+      this.label1.Location = new System.Drawing.Point(3, 11);
       this.label1.Name = "label1";
-      this.label1.Size = new System.Drawing.Size(91, 14);
+      this.label1.Size = new System.Drawing.Size(70, 13);
       this.label1.TabIndex = 0;
       this.label1.Text = "Left Directory";
       // 
@@ -60,20 +59,17 @@
             | System.Windows.Forms.AnchorStyles.Right)));
       this.cbLeftDirectory.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
       this.cbLeftDirectory.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
-      this.cbLeftDirectory.FormattingEnabled = true;
-      this.cbLeftDirectory.Location = new System.Drawing.Point(115, 0);
-      this.cbLeftDirectory.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.cbLeftDirectory.Location = new System.Drawing.Point(86, 8);
       this.cbLeftDirectory.Name = "cbLeftDirectory";
-      this.cbLeftDirectory.Size = new System.Drawing.Size(388, 22);
+      this.cbLeftDirectory.Size = new System.Drawing.Size(296, 21);
       this.cbLeftDirectory.TabIndex = 0;
       // 
       // btBrowseLeft
       // 
       this.btBrowseLeft.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btBrowseLeft.Location = new System.Drawing.Point(512, 0);
-      this.btBrowseLeft.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.btBrowseLeft.Location = new System.Drawing.Point(388, 8);
       this.btBrowseLeft.Name = "btBrowseLeft";
-      this.btBrowseLeft.Size = new System.Drawing.Size(100, 25);
+      this.btBrowseLeft.Size = new System.Drawing.Size(75, 23);
       this.btBrowseLeft.TabIndex = 4;
       this.btBrowseLeft.Text = "Browse";
       this.btBrowseLeft.UseVisualStyleBackColor = true;
@@ -82,10 +78,9 @@
       // btStartRefresh
       // 
       this.btStartRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btStartRefresh.Location = new System.Drawing.Point(620, 34);
-      this.btStartRefresh.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.btStartRefresh.Location = new System.Drawing.Point(469, 40);
       this.btStartRefresh.Name = "btStartRefresh";
-      this.btStartRefresh.Size = new System.Drawing.Size(144, 25);
+      this.btStartRefresh.Size = new System.Drawing.Size(108, 23);
       this.btStartRefresh.TabIndex = 2;
       this.btStartRefresh.Text = "Start / Refresh";
       this.btStartRefresh.UseVisualStyleBackColor = true;
@@ -94,10 +89,9 @@
       // btBrowseRight
       // 
       this.btBrowseRight.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btBrowseRight.Location = new System.Drawing.Point(512, 34);
-      this.btBrowseRight.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.btBrowseRight.Location = new System.Drawing.Point(388, 40);
       this.btBrowseRight.Name = "btBrowseRight";
-      this.btBrowseRight.Size = new System.Drawing.Size(100, 25);
+      this.btBrowseRight.Size = new System.Drawing.Size(75, 23);
       this.btBrowseRight.TabIndex = 5;
       this.btBrowseRight.Text = "Browse";
       this.btBrowseRight.UseVisualStyleBackColor = true;
@@ -108,30 +102,26 @@
             | System.Windows.Forms.AnchorStyles.Right)));
       this.cbRightDirectory.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
       this.cbRightDirectory.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
-      this.cbRightDirectory.FormattingEnabled = true;
-      this.cbRightDirectory.Location = new System.Drawing.Point(115, 37);
-      this.cbRightDirectory.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.cbRightDirectory.Location = new System.Drawing.Point(86, 42);
       this.cbRightDirectory.Name = "cbRightDirectory";
-      this.cbRightDirectory.Size = new System.Drawing.Size(388, 22);
+      this.cbRightDirectory.Size = new System.Drawing.Size(296, 21);
       this.cbRightDirectory.TabIndex = 1;
       // 
       // label3
       // 
       this.label3.AutoSize = true;
-      this.label3.Location = new System.Drawing.Point(4, 42);
-      this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+      this.label3.Location = new System.Drawing.Point(3, 47);
       this.label3.Name = "label3";
-      this.label3.Size = new System.Drawing.Size(99, 14);
+      this.label3.Size = new System.Drawing.Size(77, 13);
       this.label3.TabIndex = 8;
       this.label3.Text = "Right Directory";
       // 
       // btSettings
       // 
       this.btSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btSettings.Location = new System.Drawing.Point(620, 0);
-      this.btSettings.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.btSettings.Location = new System.Drawing.Point(469, 8);
       this.btSettings.Name = "btSettings";
-      this.btSettings.Size = new System.Drawing.Size(144, 25);
+      this.btSettings.Size = new System.Drawing.Size(108, 23);
       this.btSettings.TabIndex = 3;
       this.btSettings.Text = "Settings";
       this.btSettings.UseVisualStyleBackColor = true;
@@ -147,15 +137,15 @@
       this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-      this.treeView1.Font = new System.Drawing.Font("Lucida Console", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this.treeView1.ImageIndex = 0;
       this.treeView1.ImageList = this.imageList1;
-      this.treeView1.Location = new System.Drawing.Point(7, 65);
+      this.treeView1.Location = new System.Drawing.Point(5, 69);
+      this.treeView1.Margin = new System.Windows.Forms.Padding(2, 3, 2, 3);
       this.treeView1.Name = "treeView1";
       this.treeView1.SelectedImageIndex = 0;
       this.treeView1.ShowNodeToolTips = true;
       this.treeView1.ShowRootLines = false;
-      this.treeView1.Size = new System.Drawing.Size(757, 608);
+      this.treeView1.Size = new System.Drawing.Size(573, 556);
       this.treeView1.TabIndex = 14;
       this.treeView1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MouseClickTreeView);
       // 
@@ -175,18 +165,17 @@
             | System.Windows.Forms.AnchorStyles.Right)));
       this.taskProgress1.CurrentTask = "No task";
       this.taskProgress1.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-      this.taskProgress1.Location = new System.Drawing.Point(4, 679);
+      this.taskProgress1.Location = new System.Drawing.Point(3, 630);
       this.taskProgress1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
       this.taskProgress1.Name = "taskProgress1";
       this.taskProgress1.PercentDone = 0;
-      this.taskProgress1.Size = new System.Drawing.Size(760, 36);
+      this.taskProgress1.Size = new System.Drawing.Size(574, 33);
       this.taskProgress1.Style = System.Windows.Forms.ProgressBarStyle.Blocks;
       this.taskProgress1.TabIndex = 13;
       // 
       // DirectoryBrowse
       // 
-      this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
-      this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+      this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
       this.Controls.Add(this.treeView1);
       this.Controls.Add(this.taskProgress1);
       this.Controls.Add(this.btSettings);
@@ -197,10 +186,8 @@
       this.Controls.Add(this.btBrowseLeft);
       this.Controls.Add(this.cbLeftDirectory);
       this.Controls.Add(this.label1);
-      this.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-      this.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
       this.Name = "DirectoryBrowse";
-      this.Size = new System.Drawing.Size(768, 715);
+      this.Size = new System.Drawing.Size(580, 664);
       this.Load += new System.EventHandler(this.DirectoryBrowse_Load);
       this.ResumeLayout(false);
       this.PerformLayout();

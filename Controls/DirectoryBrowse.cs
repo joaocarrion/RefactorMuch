@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using RefactorMuch.Configuration;
-using RefactorMuch.Controls;
+using RefactorMuch.Controls.TreeNodes;
 using RefactorMuch.Parse;
 using RefactorMuch.Util;
 using System;
@@ -14,11 +14,15 @@ namespace RefactorMuch
 {
   public partial class DirectoryBrowse : UserControl
   {
-    private DirectoryCompare compare;
-    private ConfigData config;
-    private JObject doc;
-
     public delegate void FinishedParsing();
+
+    private JObject doc;
+    private ConfigData config;
+    private DirectoryCompare compare;
+
+    public static string LeftPath { get; private set; }
+    public static string RightPath { get; private set; }
+
     public FinishedParsing OnFinishedParsing { get; set; }
 
     public Dictionary<string, object> properties = new Dictionary<string, object>();
@@ -117,16 +121,16 @@ namespace RefactorMuch
 
       // TODO: Settings
       var exts = "*.cs";
-      string leftPath = cbLeftDirectory.Text;
-      string rightPath = cbRightDirectory.Text;
+      LeftPath = cbLeftDirectory.Text;
+      RightPath = cbRightDirectory.Text;
       treeView1.Nodes.Clear();
 
       // Directory compare
-      compare = new DirectoryCompare(leftPath, rightPath, exts);
+      compare = new DirectoryCompare(LeftPath, RightPath, exts);
       await compare.Parse();
 
       // create root noew
-      treeView1.Nodes.Add(new TreeNode($"Comparison: {leftPath} x {rightPath}", 0, 0));
+      treeView1.Nodes.Add(new TreeNode($"Comparison: {LeftPath} x {RightPath}", 0, 0));
 
       // run tasks
       var tasks = MultiTask.Run(new Func<TreeNode>[]
@@ -134,6 +138,7 @@ namespace RefactorMuch
         () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), compare.DuplicateLeft); },
         () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
         () => { return AddMoved(); },
+        () => { return AddRenamed(); },
         () => { return AddChanged(); },
         () => { return AddRefactored(); }
       });
@@ -151,7 +156,8 @@ namespace RefactorMuch
     }
 
     private TreeNode AddMoved() => AddCompareNodes(new TreeNode("Moved Files", 2, 2), compare.MovedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
-    private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 3); });
+    private TreeNode AddRenamed() => AddCompareNodes(new TreeNode("Renamed Files", 2, 2), compare.RenamedSet, (CrossCompare compare) => { return new RenamedNode(compare, 3); });
+    private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 4); });
     private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
     private TreeNode AddRefactored() => AddCompareNodes(new TreeNode("Refactored? Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
 

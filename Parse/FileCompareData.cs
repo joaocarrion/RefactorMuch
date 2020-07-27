@@ -85,7 +85,7 @@ namespace RefactorMuch.Parse
       return data;
     }
 
-    public override string ToString() => $"File: {name}, Path: ${absolutePath}, Lines: {lineHash.Count}";
+    public override string ToString() => $"File: {name}, LocalPath: {localPath}, Path: {absolutePath}, Lines: {lineHash.Count}";
     public override int GetHashCode() => absolutePath.GetHashCode();
     public override bool Equals(object obj) => string.Compare(absolutePath, ((FileCompareData)obj).absolutePath, true) == 0;
 

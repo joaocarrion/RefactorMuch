@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 
-namespace RefactorMuch.Controls
+namespace RefactorMuch.Controls.TreeNodes
 {
   public partial class MovedNode : CrossCompareNode
   {
@@ -12,7 +12,33 @@ namespace RefactorMuch.Controls
       if (compare.left.localPath.Equals(compare.right.localPath))
         Text = $"{compare.left.name} renamed {compare.right.name} => {compare.left.localPath}";
       else
-        Text = $"{compare.left.name} moved ({compare.left.absolutePath} => {compare.right.absolutePath})";
+        Text = $"{compare.left.name} moved ({compare.left.localPath} => {compare.right.localPath})";
+    }
+
+    private static MenuStrip menuStrip = null;
+    private static object menuLock = new object();
+
+    protected override ContextMenuStrip GetMenu()
+    {
+      if (menuStrip == null)
+        lock (menuLock)
+          if (menuStrip == null)
+          {
+            var items = new string[]
+            {
+              "Move Left",
+              "Move Right",
+            };
+
+            var actions = new Action<TreeView>[]
+            {
+              (view) => { ((MovedNode)view.SelectedNode).MoveLeft(); },
+              (view) => { ((MovedNode)view.SelectedNode).MoveRight(); },
+            };
+            menuStrip = new MenuStrip(items, actions);
+          }
+
+      return menuStrip;
     }
 
     private void Move(bool isLeft)
@@ -43,6 +69,5 @@ namespace RefactorMuch.Controls
 
     private void MoveLeft() => Move(true);
     private void MoveRight() => Move(false);
-    private void View() => Tools.GetInstance().ToolDictionary[Tool.ToolType.View].Run(compare.left.absolutePath);
   }
 }

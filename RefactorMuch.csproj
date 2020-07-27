@@ -83,8 +83,12 @@
     </Compile>
     <Compile Include="Controls\TreeNodes\CrossCompareNode.cs" />
     <Compile Include="Controls\TreeNodes\DuplicateNode.cs" />
-    <Compile Include="Controls\TreeNodes\MenuStrip.cs" />
+    <Compile Include="Controls\TreeNodes\FileDataNode.cs" />
+    <Compile Include="Controls\TreeNodes\MenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\TreeNodes\MovedNode.cs" />
+    <Compile Include="Controls\TreeNodes\RenamedNode.cs" />
     <Compile Include="Controls\TreeNodes\SimilarNode.cs" />
     <Compile Include="Controls\TaskProgress.cs">
       <SubType>UserControl</SubType>
