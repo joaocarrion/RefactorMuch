@@ -1,4 +1,4 @@
-﻿namespace InteractiveMerge
+﻿namespace RefactorMuch
 {
   partial class DirectoryBrowse
   {
@@ -29,6 +29,7 @@
     private void InitializeComponent()
     {
       this.components = new System.ComponentModel.Container();
+      System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DirectoryBrowse));
       this.label1 = new System.Windows.Forms.Label();
       this.cbLeftDirectory = new System.Windows.Forms.ComboBox();
       this.btBrowseLeft = new System.Windows.Forms.Button();
@@ -37,9 +38,10 @@
       this.cbRightDirectory = new System.Windows.Forms.ComboBox();
       this.label3 = new System.Windows.Forms.Label();
       this.btSettings = new System.Windows.Forms.Button();
-      this.updateProgess = new System.Windows.Forms.Timer(this.components);
-      this.flowPanel = new System.Windows.Forms.FlowLayoutPanel();
-      this.taskProgress1 = new InteractiveMerge.Controls.TaskProgress();
+      this.updateProgress = new System.Windows.Forms.Timer(this.components);
+      this.treeView1 = new System.Windows.Forms.TreeView();
+      this.imageList1 = new System.Windows.Forms.ImageList(this.components);
+      this.taskProgress1 = new RefactorMuch.Controls.TaskProgress();
       this.SuspendLayout();
       // 
       // label1
@@ -87,7 +89,7 @@
       this.btStartRefresh.TabIndex = 2;
       this.btStartRefresh.Text = "Start / Refresh";
       this.btStartRefresh.UseVisualStyleBackColor = true;
-      this.btStartRefresh.Click += new System.EventHandler(this.btStartRefresh_Click);
+      this.btStartRefresh.Click += new System.EventHandler(this.ButtonStart);
       // 
       // btBrowseRight
       // 
@@ -134,23 +136,38 @@
       this.btSettings.Text = "Settings";
       this.btSettings.UseVisualStyleBackColor = true;
       // 
-      // updateProgess
+      // updateProgress
       // 
-      this.updateProgess.Enabled = true;
-      this.updateProgess.Interval = 1000;
-      this.updateProgess.Tick += new System.EventHandler(this.updateProgess_Tick);
+      this.updateProgress.Enabled = true;
+      this.updateProgress.Interval = 1000;
+      this.updateProgress.Tick += new System.EventHandler(this.UpdateProgress);
       // 
-      // flowPanel
+      // treeView1
       // 
-      this.flowPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+      this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-      this.flowPanel.AutoScroll = true;
-      this.flowPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-      this.flowPanel.Location = new System.Drawing.Point(7, 65);
-      this.flowPanel.Name = "flowPanel";
-      this.flowPanel.Size = new System.Drawing.Size(757, 608);
-      this.flowPanel.TabIndex = 4;
+      this.treeView1.Font = new System.Drawing.Font("Lucida Console", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.treeView1.ImageIndex = 0;
+      this.treeView1.ImageList = this.imageList1;
+      this.treeView1.Location = new System.Drawing.Point(7, 65);
+      this.treeView1.Name = "treeView1";
+      this.treeView1.SelectedImageIndex = 0;
+      this.treeView1.ShowNodeToolTips = true;
+      this.treeView1.ShowRootLines = false;
+      this.treeView1.Size = new System.Drawing.Size(757, 608);
+      this.treeView1.TabIndex = 14;
+      this.treeView1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MouseClickTreeView);
+      // 
+      // imageList1
+      // 
+      this.imageList1.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList1.ImageStream")));
+      this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
+      this.imageList1.Images.SetKeyName(0, "diff.png");
+      this.imageList1.Images.SetKeyName(1, "duplicate.png");
+      this.imageList1.Images.SetKeyName(2, "moved.png");
+      this.imageList1.Images.SetKeyName(3, "changed.png");
+      this.imageList1.Images.SetKeyName(4, "similar.png");
       // 
       // taskProgress1
       // 
@@ -170,7 +187,7 @@
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.Controls.Add(this.flowPanel);
+      this.Controls.Add(this.treeView1);
       this.Controls.Add(this.taskProgress1);
       this.Controls.Add(this.btSettings);
       this.Controls.Add(this.btBrowseRight);
@@ -201,7 +218,8 @@
     private System.Windows.Forms.Label label3;
     private System.Windows.Forms.Button btSettings;
     private Controls.TaskProgress taskProgress1;
-    private System.Windows.Forms.Timer updateProgess;
-    private System.Windows.Forms.FlowLayoutPanel flowPanel;
+    private System.Windows.Forms.Timer updateProgress;
+    private System.Windows.Forms.TreeView treeView1;
+    private System.Windows.Forms.ImageList imageList1;
   }
 }

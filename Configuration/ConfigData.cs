@@ -1,61 +1,51 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Text.Json;
-using System.Threading;
 
-namespace InteractiveMerge.Configuration
+namespace RefactorMuch.Configuration
 {
   public class ConfigData
   {
-    public DictionaryProperty config { get; private set; }
-
     private readonly string path;
 
-    public ConfigData(string path)
+    public JObject doc { get; private set; }
+
+    private ConfigData(string path)
     {
       this.path = path;
 
       try
       {
-        using (BufferedStream bs = new BufferedStream(File.OpenRead(path)))
-        {
-          bs.Seek(0, SeekOrigin.End);
-          var size = bs.Position;
-          bs.Seek(0, SeekOrigin.Begin);
-
-          byte[] data = new byte[size + 1];
-          bs.Read(data, 0, (int)size + 1);
-
-          Utf8JsonReader reader = new Utf8JsonReader(new ReadOnlySpan<byte>(data));
-          config = JsonSerializer.Deserialize<DictionaryProperty>(ref reader);
-        }
+        using (var reader = new JsonTextReader(new StreamReader(File.OpenRead(path), Encoding.UTF8)))
+          doc = (JObject)JObject.ReadFrom(reader);
       }
       catch (IOException)
       {
-        config = new DictionaryProperty { name = "config" };
+        doc = JObject.FromObject(new { });
       }
       catch (Exception exc)
       {
         MessageBox.Show(exc.Message, "Unknown Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        throw;
       }
     }
 
-    /// <summary>
-    /// Explicitly locked save function, expecting maintenance on properties from only the main thread
-    /// </summary>
     public void Save()
     {
-      using (BufferedStream bs = new BufferedStream(File.Create(path)))
-      {
-        var task = JsonSerializer.SerializeAsync(bs, config);
-        while (!task.IsCompleted)
-          Thread.Sleep(20);
-      }
+      using (TextWriter writer = new StreamWriter(File.Create(path)))
+        writer.Write(doc.ToString());
     }
+
+    public static ConfigData instance = null;
+    public static ConfigData GetInstance()
+    {
+      if (instance == null)
+        instance = new ConfigData(Application.LocalUserAppDataPath + "\\app-config.json");
+      return instance;
+    }
+
   }
 }

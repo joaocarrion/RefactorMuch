@@ -1,0 +1,67 @@
+{
+  "lastLeft": "c:\\repos\\preguinho\\Assets",
+  "lastRight": "c:\\repos\\preguinho-1.6\\Assets",
+  "lastItems": [
+    "c:\\repos\\preguinho",
+    "c:\\repos\\preguinho-oldrepo",
+    "c:\\repos\\preguinho\\Assets",
+    "c:\\repos\\preguinho-oldrepo\\Assets",
+    "c:\\repos\\preguinho-1.6\\Assets"
+  ],
+  "tools": [
+    {
+      "type": "Diff",
+      "path": "C:\\Program Files (x86)\\WinMerge\\WinMergeU.exe",
+      "parameters": "/s"
+    },
+    {
+      "type": "View",
+      "path": "C:\\Program Files\\Microsoft VS Code\\Code.exe",
+      "parameters": "-r"
+    }
+  ],
+  "rules": [
+    {
+      "name": "FileCompare",
+      "description": "Rules for comparing an entire file",
+      "rules": [
+        {
+          "name": "Block Comments",
+          "description": "Remove block comments",
+          "expression": "(\\/\\*)(.|\\n)*?(\\*\\/)"
+        },
+        {
+          "name": "Line Comments",
+          "description": "Remove line comments",
+          "expression": " *\\/\\/.*"
+        },
+        {
+          "name": "Syntax Breakers",
+          "description": "Remove syntax breakers",
+          "expression": " {2}|\\{|\\}|(\\r\\n)"
+        }
+      ]
+    },
+    {
+      "name": "LineCompare",
+      "description": "Rules for comparing an entire file",
+      "rules": [
+        {
+          "name": "Block Comments",
+          "description": "Remove block comments",
+          "expression": "(\\/\\*)(.|\\n)*?(\\*\\/)"
+        },
+        {
+          "name": "Line Comments",
+          "description": "Remove line comments",
+          "expression": " *\\/\\/.*"
+        },
+        {
+          "name": "Syntax Breakers",
+          "description": "Remove syntax breakers (leave \\n)",
+          "expression": " {2}|\\{|\\}|(\\r)"
+        }
+      ]
+    }
+  ]
+}

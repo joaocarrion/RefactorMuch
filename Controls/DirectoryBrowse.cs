@@ -1,75 +1,74 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using RefactorMuch.Configuration;
+using RefactorMuch.Controls;
+using RefactorMuch.Parse;
+using RefactorMuch.Util;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using InteractiveMerge.Configuration;
-using System.IO;
-using InteractiveMerge.Parse;
-using System.Reflection;
-using System.Drawing.Text;
-using InteractiveMerge.Controls;
 
-namespace InteractiveMerge
+namespace RefactorMuch
 {
   public partial class DirectoryBrowse : UserControl
   {
-    public delegate void FinishedParsing();
-
-    //private ConfigData dbConfiguration;
     private DirectoryCompare compare;
-    //private DictionaryProperty configuration;
-    private KeyValuePair<string, Property>[] propertiesInitializer = new KeyValuePair<string, Property>[]
-    {
-      new KeyValuePair<string, Property>("lastLeftDir", new StringProperty("")),
-      new KeyValuePair<string, Property>("lastRightDir", new StringProperty("")),
-      new KeyValuePair<string, Property>("recentList", new ArrayProperty()),
-      new KeyValuePair<string, Property>("filterExtensions", new ArrayProperty(new object[] { "*.cs" })),
-      new KeyValuePair<string, Property>("fileFilter", new ArrayProperty())
-    };
+    private ConfigData config;
+    private JObject doc;
 
-    private ArrayProperty recentList, filterExtentions, recentFilter;
-
+    public delegate void FinishedParsing();
     public FinishedParsing OnFinishedParsing { get; set; }
+
+    public Dictionary<string, object> properties = new Dictionary<string, object>();
 
     public DirectoryBrowse()
     {
       InitializeComponent();
-
-      //dbConfiguration = new ConfigData(Application.LocalUserAppDataPath + "/app.config");
-      //var properties = dbConfiguration.config;
-      //if (!properties.ContainsKey(Name))
-      //  properties.Add(Name, configuration = new DictionaryProperty());
-      //else
-      //  configuration = (DictionaryProperty)properties[Name];
     }
 
     private void DirectoryBrowse_Load(object sender, EventArgs e)
     {
-      //LoadProps();
+      config = ConfigData.GetInstance();
+      doc = config.doc;
+      LoadProps();
     }
 
-    //private void LoadProps()
-    //{
-    //  foreach (var kv in propertiesInitializer)
-    //    if (!configuration.ContainsKey(kv.Key))
-    //      configuration[kv.Key] = kv.Value;
+    private void LoadProps()
+    {
+      var ll = doc.Value<string>("lastLeft");
+      var lr = doc.Value<string>("lastRight");
+      var lastItemsArray = doc.Value<JArray>("lastItems");
+      string[] lastItems = lastItemsArray != null ? lastItemsArray.Select(c => (string)c).ToArray() : null;
 
-    //  recentList = (ArrayProperty)configuration["recentList"];
-    //  filterExtentions = (ArrayProperty)configuration["filterExtensions"];
-    //  recentFilter = (ArrayProperty)configuration["fileFilter"];
+      if (ll != null)
+        cbLeftDirectory.Text = ll;
+      if (lr != null)
+        cbRightDirectory.Text = lr;
 
-    //  cbLeftDirectory.Items.AddRange(recentList.ToArray());
-    //  cbRightDirectory.Items.AddRange(recentList.ToArray());
+      if (lastItems != null)
+      {
+        cbLeftDirectory.Items.AddRange(lastItems);
+        cbRightDirectory.Items.AddRange(lastItems);
+      }
+    }
 
-    //  // TODO: fill last entry and when start/refresh are pressed, update
-    //  cbLeftDirectory.Text = configuration["lastLeftDir"];
-    //  cbRightDirectory.Text = configuration["lastRightDir"];
-    //}
+    private void ConfigSave()
+    {
+      doc["lastLeft"] = cbLeftDirectory.Text;
+      doc["lastRight"] = cbRightDirectory.Text;
+
+      var set = new HashSet<string>();
+      foreach (var item in cbLeftDirectory.Items)
+        set.Add(item.ToString());
+      foreach (var item in cbRightDirectory.Items)
+        set.Add(item.ToString());
+
+      doc["lastItems"] = new JArray(set.ToArray());
+
+      config.Save();
+    }
 
     private void btBrowseLeft_Click(object sender, EventArgs e)
     {
@@ -84,7 +83,7 @@ namespace InteractiveMerge
           cbRightDirectory.Text = dialog.SelectedPath;
     }
 
-    private void btStartRefresh_Click(object sender, EventArgs e)
+    private void ButtonStart(object sender, EventArgs e)
     {
       if (!Directory.Exists(cbLeftDirectory.Text))
         MessageBox.Show("Left path is not a directory");
@@ -92,31 +91,17 @@ namespace InteractiveMerge
         MessageBox.Show("Left path is not a directory");
       else
       {
-        //configuration["lastLeftDir"].value = cbLeftDirectory.Text;
-        //configuration["lastRightDir"].value = cbRightDirectory.Text;
-        //cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
-        //cbRightDirectory.Items.Add(cbRightDirectory.Text);
+        btStartRefresh.Enabled = false;
 
-        //ConfigSave();
-        flowPanel.Controls.Clear();
+        cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
+        cbRightDirectory.Items.Add(cbRightDirectory.Text);
+        ConfigSave();
         Compare();
       }
     }
 
-    private void ConfigSave()
-    {
-      foreach (var item in cbLeftDirectory.Items)
-        if (!recentList.Contains(item))
-          recentList.Add(item);
 
-      foreach (var item in cbRightDirectory.Items)
-        if (!recentList.Contains(item))
-          recentList.Add(item);
-
-      //dbConfiguration.Save();
-    }
-
-    private void updateProgess_Tick(object sender, EventArgs e)
+    private void UpdateProgress(object sender, EventArgs e)
     {
       if (compare != null)
       {
@@ -127,66 +112,111 @@ namespace InteractiveMerge
 
     private async void Compare()
     {
-      var exts = "*.cs"; //Aggregate(filterExtentions);
+      btStartRefresh.Enabled = false;
+      SuspendLayout();
+
+      // TODO: Settings
+      var exts = "*.cs";
       string leftPath = cbLeftDirectory.Text;
       string rightPath = cbRightDirectory.Text;
 
+      // Directory compare
       compare = new DirectoryCompare(leftPath, rightPath, exts);
       await compare.Parse();
 
-      var left = compare.Left;
-      var right = compare.Right;
+      // create root noew
+      treeView1.Nodes.Add(new TreeNode($"Comparison: {leftPath} x {rightPath}", 0, 0));
 
-      // TODO: Move into file comparison
-      foreach (string file in compare.Filenames)
+      // run tasks
+      var tasks = MultiTask.Run(new Func<TreeNode>[]
       {
-        FileCompareData lFile = null;
-        FileCompareData rFile = null;
+        () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), compare.DuplicateLeft); },
+        () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
+        () => { return AddMoved(); },
+        () => { return AddChanged(); },
+        () => { return AddRefactored(); }
+      });
 
-        if (left.ContainsKey(file))
-          lFile = left[file];
+      Task.WaitAll(tasks);
 
-        if (right.ContainsKey(file))
-          rFile = right[file];
+      foreach (var t in tasks)
+        treeView1.Nodes[0].Nodes.Add(t.Result);
 
-        if (lFile != null && rFile != null && lFile.parsed && rFile.parsed)
-        {
-          // Add only different
-          if (!lFile.hash.SequenceEqual(rFile.hash))
-            AddMoved(lFile, rFile);
-        }
-        else if (lFile != null && lFile.parsed)
-          AddSideOnly(lFile);
-        else if (rFile != null && rFile.parsed)
-          AddSideOnly(rFile);
+      System.GC.Collect();
+      treeView1.Nodes[0].Expand();
+      btStartRefresh.Enabled = true;
+
+      ResumeLayout();
+    }
+
+    private TreeNode AddMoved() => AddCompareNodes(new TreeNode("Moved Files", 2, 2), compare.MovedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
+    private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 3); });
+    private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
+    private TreeNode AddRefactored() => AddCompareNodes(new TreeNode("Refactored? Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
+
+    private TreeNode AddCompareNodes(TreeNode root, CrossCompareSet set, Func<CrossCompare, TreeNode> constructor)
+    {
+      // sort directories
+      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(new StringCompareSizeFirst());
+
+      // sort filenames
+      var nameFirst = set.ToArray();
+      Array.Sort(nameFirst, new CrossCompareNameFirst());
+
+      // create directory nodes
+      foreach (var file in nameFirst)
+      {
+        var smallerPath = file.left.SmallerLocalPath(file.right);
+        if (!duplicatePath.ContainsKey(smallerPath.localPath))
+          duplicatePath.Add(smallerPath.localPath, new TreeNode(smallerPath.localPath, 1, 1));
+      }
+
+      // add file nodes
+      foreach (var file in nameFirst)
+      {
+        var cc = file;
+        if (file.left.SmallerLocalPath(file.right) != file.left)
+          cc = new CrossCompare(file.right, file.left, file.similarity);
+
+        duplicatePath[cc.left.localPath].Nodes.Add(constructor(cc));
+      }
+
+      // add directory nodes to the tree
+      foreach (var node in duplicatePath)
+        root.Nodes.Add(node.Value);
+
+      return root;
+    }
+
+    private void MouseClickTreeView(object sender, MouseEventArgs e)
+    {
+      if (e.Button == MouseButtons.Right)
+        treeView1.SelectedNode = treeView1.GetNodeAt(e.X, e.Y);
+    }
+
+    private class StringCompareSizeFirst : IComparer<string>
+    {
+      public int Compare(string x, string y) => x.Length < y.Length ? -1 : (x.Length > y.Length) ? 1 : string.Compare(x, y, true);
+    }
+
+    private class CrossCompareNameFirst : IComparer<CrossCompare>
+    {
+      public int Compare(CrossCompare x, CrossCompare y)
+      {
+        var smallerX = x.left.SmallerLocalPath(x.right);
+        var smallerY = y.left.SmallerLocalPath(y.right);
+        if (smallerX.name.Equals(smallerY.name))
+          return x.CompareTo(y);
+        else
+          return string.Compare(smallerX.name, smallerY.name, true);
       }
     }
 
-    private void AddSideOnly(FileCompareData fileCompare)
+    private FileCompareData Find(string filename, Dictionary<string, FileCompareData> dictionary)
     {
-      LeftOnly leftOnly = new LeftOnly();
-      leftOnly.LeftPath = fileCompare.path;
-      leftOnly.Filename = fileCompare.name;
-      leftOnly.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
-
-      flowPanel.Controls.Add(leftOnly);
-      leftOnly.Width = flowPanel.Width - 48;
-    }
-
-    private void AddMoved(FileCompareData lFile, FileCompareData rFile)
-    {
-      MovedPath movedPath = new MovedPath();
-      movedPath.LeftPath = lFile.path;
-      movedPath.RightPath = rFile.path;
-      movedPath.Filename = rFile.name;
-      movedPath.Anchor = (AnchorStyles.Left | AnchorStyles.Right);
-
-      flowPanel.Controls.Add(movedPath);
-      movedPath.Width = flowPanel.Width - 48;
-    }
-
-    private void AddUnchangedPath(FileCompareData lFile, FileCompareData rFile)
-    {
+      FileCompareData file;
+      dictionary.TryGetValue(filename, out file);
+      return file;
     }
   }
 }

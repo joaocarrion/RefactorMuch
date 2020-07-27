@@ -1,148 +1,188 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
-using System.Security.Policy;
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 
-namespace InteractiveMerge.Parse
+namespace RefactorMuch.Parse
 {
-  public class FileCompareData
+  public partial class DirectoryCompare
   {
-    public bool parsed = false;
-    public string name;
-    public string path;
-    public byte[] hash;
-    public string localPath;
-    public DateTime lastChange;
-  }
-
-  public class DirectoryCompare
-  {
-    private string left;
-    private string right;
-    private string fileFilter;
-
-    // filename => path
-    private HashSet<string> filenames = new HashSet<string>();
-    private Dictionary<string, FileCompareData> leftFiles = new Dictionary<string, FileCompareData>();
-    private Dictionary<string, FileCompareData> rightFiles = new Dictionary<string, FileCompareData>();
-
     private int totalFiles = 0;
     private int fileScanIndex = 0;
     private int totalDirectories = 0;
     private int directoryScanIndex = 0;
+    private long crossCompareIndex = 0;
+    private long totalCrossCompare = 0;
 
-    public int Progress {
-      get {
-        if (totalFiles != 0)
-        {
-          TaskName = "Parsing Files";
-          return (int)((float)fileScanIndex / totalFiles * 100);
-        }
-        else if (totalDirectories != 0)
-        {
-          TaskName = "Scanning Directories";
-          return (int)((float)directoryScanIndex / totalDirectories * 100);
-        }
-        else
-        {
-          TaskName = "Idle";
-          return 100;
-        }
-      }
-    }
+    public string LeftPath { get; }
+    public string RightPath { get; }
+    public SortedSet<string> Filenames { get; private set; } = new SortedSet<string>();
+    public Dictionary<string, FileCompareData> LeftFiles { get; private set; } = new Dictionary<string, FileCompareData>();
+    public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
+    public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(1f);
+
+    // TODO: In the future, semantic comparison would be nice
+    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.45f);
+
+    public int Progress => ProgressCount();
 
     public string TaskName { get; private set; } = "Idle";
 
-    public HashSet<string> Filenames { get => filenames; }
-
-    public Dictionary<string, FileCompareData> Left => leftFiles;
-    public Dictionary<string, FileCompareData> Right => rightFiles;
+    public string FileFilter { get; }
 
     public DirectoryCompare(string left, string right, string fileFilter)
     {
-      this.left = left;
-      this.right = right;
-      this.fileFilter = fileFilter;
+      LeftPath = left;
+      RightPath = right;
+      FileFilter = fileFilter;
     }
 
     public async Task Parse()
     {
-      var taskLeft = Task.Run(() => ListFiles(left));
-      var taskRight = Task.Run(() => ListFiles(right));
+      totalFiles = 0;
+      fileScanIndex = 0;
+      totalDirectories = 0;
+      directoryScanIndex = 0;
+      crossCompareIndex = 0;
+      totalCrossCompare = 0;
 
-      var leftFiles = await taskLeft;
-      var rightFiles = await taskRight;
-
-      totalFiles = leftFiles.Count + rightFiles.Count;
-      var fileTasks = new Task[] {
-        Task.Run(() => ParseFiles(leftFiles, this.leftFiles, this.left)),
-        Task.Run(() => ParseFiles(rightFiles, this.rightFiles, this.right))
+      CompareSets left = new CompareSets
+      {
+        Path = LeftPath,
+        FileList = null,
+        Files = LeftFiles,
+        Duplicates = DuplicateLeft,
       };
-      foreach (var t in fileTasks) await t;
+
+      CompareSets right = new CompareSets
+      {
+        FileList = null,
+        Path = RightPath,
+        Files = RightFiles,
+        Duplicates = DuplicateRight,
+      };
+
+      // Parse files left and right
+      var tasks = new Task[] { Task.Run(() => ParseFiles(left)), Task.Run(() => ParseFiles(right)) };
+      await Task.WhenAll(tasks);
+
+      // compare left with left, right with right and then left with right
+      totalCrossCompare = left.Files.Count * left.Files.Count + right.Files.Count * right.Files.Count + left.Files.Count * right.Files.Count;
+
+      var crossCompareTasks = new Task[]
+      {
+        Task.Run(() => { CrossCompareSelf(left); }),
+        Task.Run(() => { CrossCompareSelf(right); }),
+        Task.Run(() => { CrossCompare(left, right); })
+      };
+
+      // wait until done
+      await Task.WhenAll(crossCompareTasks);
 
       totalFiles = 0;
       fileScanIndex = 0;
       totalDirectories = 0;
       directoryScanIndex = 0;
+      crossCompareIndex = 0;
+      totalCrossCompare = 0;
     }
 
-    private void ParseFiles(List<string> files, Dictionary<string, FileCompareData> target, string sourcePath)
+    private void CrossCompareSelf(CompareSets set)
     {
-      // detect file moves
-      foreach (var file in files)
+      var tasks = new List<Task>();
+      foreach (var left in set.AllFiles)
       {
-        // TODO: Hash, Date
-        var data = GetCompareData(file);
-        data.localPath = data.path.Replace(sourcePath, "");
-
-        // TODO: Ignoring right if there are two files with the same name
-        target[data.name] = data;
-        ++fileScanIndex;
-
-        lock (filenames)
+        foreach (var right in set.AllFiles)
         {
-          filenames.Add(data.name);
-        }
-      }
-    }
-
-    private Regex regex = new Regex("[ \\n\\r;\\{\\}]");
-
-    private FileCompareData GetCompareData(string file)
-    {
-      var fd = new FileCompareData()
-      {
-        hash = null,
-        lastChange = File.GetLastWriteTime(file),
-        name = Path.GetFileName(file),
-        path = file
-      };
-
-      try
-      {
-        using (var bs = new BufferedStream(File.OpenRead(file)))
-        {
-          byte[] data = new byte[512 * 1024];
-          int read = bs.Read(data, 0, 512 * 1024);
-          string str = System.Text.Encoding.UTF8.GetString(data, 0, read);
-          // ignore white space
-          var res = regex.Replace(str, "");
-
-          var resultData = System.Text.Encoding.UTF8.GetBytes(res);
-          using (var md5Hash = MD5.Create())
+          // same file on both sets
+          if (left.Equals(right)) continue;
+          // same file contents
+          else if (left.hash.Equals(right.hash))
+            // renamed or duplicate
+            // if (!left.localPath.Equals(right.localPath) || !left.name.Equals(right.name)) // one will always be different
+            lock (set.Duplicates) { set.Duplicates.Add(new CrossCompare(left, right, 1f)); }
+          else tasks.Add(Task.Run(() =>
           {
-            fd.hash = md5Hash.ComputeHash(resultData);
-          }
-          fd.parsed = true;
+            // may be an inner refactory
+            var cc = new CrossCompare(left, right);
+            lock (CrossSet) CrossSet.Add(cc);
+          }));
         }
       }
-      catch (IOException) { }
 
-      return fd;
+      Task.WaitAll(tasks.ToArray());
+    }
+
+    private void CrossCompare(CompareSets leftSet, CompareSets rightSet)
+    {
+      var tasks = new List<Task>();
+      foreach (var left in leftSet.AllFiles)
+      {
+        foreach (var right in rightSet.AllFiles)
+        {
+          if (left.name.Equals(right.name)) // same name
+          {
+            if (left.hash.Equals(right.hash)) // same contents
+            {
+              if (!left.localPath.Equals(right.localPath)) // different path => moved
+                // same file different local paths
+                lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+            }
+            else // different contents... compare
+            {
+              tasks.Add(Task.Run(() =>
+              {
+                var changedCompare = new CrossCompare(left, right);
+                lock (ChangedSet) ChangedSet.Add(changedCompare);
+              }));
+            }
+          }
+          else if (left.hash.Equals(right.hash)) // different name, same content, renamed
+            lock (MovedSet) MovedSet.Add(new CrossCompare(left, right, 1f));
+          // Different name/contents, check if it may be a refactor
+          else tasks.Add(Task.Run(() =>
+          {
+            var cc = new CrossCompare(left, right);
+            lock (CrossSet) CrossSet.Add(cc);
+          }));
+        }
+      }
+
+      Task.WaitAll(tasks.ToArray());
+    }
+
+    private void ParseFiles(CompareSets set)
+    {
+      // scan directories
+      var files = ListFiles(set.Path);
+      
+      // set files
+      set.FileList = files;
+      totalFiles += files.Count;
+
+      int wt, cpt;
+      ThreadPool.GetMaxThreads(out wt, out cpt);
+
+      // files file comparision
+      var tasks = new List<Task>();
+      foreach (var file in set.FileList)
+        tasks.Add(Task.Run(() =>
+        {
+          var data = FileCompareData.FromFile(file, set.Path);
+          lock (set)
+          {
+            set.AllFiles.Add(data);
+            set.Files[data.absolutePath] = data;
+            Filenames.Add(data.name);
+          }
+
+          ++fileScanIndex;
+        }));
+
+      Task.WaitAll(tasks.ToArray());
     }
 
     private List<string> ListFiles(string path)
@@ -172,7 +212,31 @@ namespace InteractiveMerge.Parse
 
     private string[] GetFilters()
     {
-      return fileFilter.Split(',');
+      return FileFilter.Split(',');
+    }
+
+    private int ProgressCount()
+    {
+      if (totalFiles != 0)
+      {
+        TaskName = "Parsing Files";
+        return (int)((float)fileScanIndex / totalFiles * 100);
+      }
+      else if (totalDirectories != 0)
+      {
+        TaskName = "Scanning Directories";
+        return (int)((float)directoryScanIndex / totalDirectories * 100);
+      }
+      else if (totalCrossCompare != 0)
+      {
+        TaskName = "Cross Compare Files";
+        return (int)((float)crossCompareIndex / totalCrossCompare);
+      }
+      else
+      {
+        TaskName = "Idle";
+        return 100;
+      }
     }
   }
 }

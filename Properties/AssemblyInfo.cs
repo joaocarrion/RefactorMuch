@@ -1,16 +1,15 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("InteractiveMerge")]
+[assembly: AssemblyTitle("RefactorMuch")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("InteractiveMerge")]
-[assembly: AssemblyCopyright("Copyright ©  2020")]
+[assembly: AssemblyProduct("RefactorMuch")]
+[assembly: AssemblyCopyright("Copyright ©  2020 - Joao Eduardo Carrion")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
