@@ -21,10 +21,13 @@ namespace RefactorMuch.Parse
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
+    public CrossCompareSet RefactoredLeft { get; private set; } = new CrossCompareSet(0.7f);
+    public CrossCompareSet RefactoredRight { get; private set; } = new CrossCompareSet(0.7f);
     public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(0f, 1f);
     public CrossCompareSet RenamedSet { get; private set; } = new CrossCompareSet(1f);
     public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.51f);
+    public CrossCompareSet UnchangedFileSet { get; private set; } = new CrossCompareSet(1f);
 
     // TODO: In the future, semantic comparison would be nice
 
@@ -57,6 +60,7 @@ namespace RefactorMuch.Parse
         FileList = null,
         Files = LeftFiles,
         Duplicates = DuplicateLeft,
+        Refactored = RefactoredLeft
       };
 
       CompareSets right = new CompareSets
@@ -65,6 +69,7 @@ namespace RefactorMuch.Parse
         Path = RightPath,
         Files = RightFiles,
         Duplicates = DuplicateRight,
+        Refactored = RefactoredRight
       };
 
       // Parse files left and right
@@ -92,37 +97,32 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
-    private Task AddToSet(CrossCompareSet set, CrossCompare compare)
+    private Task AddToSet(CrossCompareSet set, FileCompareData left, FileCompareData right, float similarity = -1f)
     {
-      return Task.Run(() => { lock (set) set.Add(compare); });
+      return Task.Run(() =>
+      {
+        var cc = similarity == -1f ? new CrossCompare(left, right) : new CrossCompare(left, right, similarity);
+        lock (set) set.Add(cc);
+      });
     }
 
     private void CrossCompareSelf(CompareSets set)
     {
       var tasks = new List<Task>();
       foreach (var left in set.AllFiles)
-      {
         foreach (var right in set.AllFiles)
-        {
-          // same file on both sets
-          if (left.Equals(right)) continue;
-          // same file contents
-          if (left.hash.Equals(right.hash))
-          {
-            if (left.name.Equals(right.name))
-              // duplicate
-              tasks.Add(AddToSet(set.Duplicates, new CrossCompare(left, right, 1f)));
+          if (left != right && !left.Equals(right))
+            if (left.name == right.name)
+              // same name
+              if (left.hash == right.hash)
+                // local folder must be different
+                tasks.Add(AddToSet(set.Duplicates, left, right, 1f));
+              else
+                // local folder must be different, however, the file has the same name... duplicate?
+                tasks.Add(AddToSet(CrossSet, left, right));
             else
-              tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
-          }
-          else tasks.Add(Task.Run(() =>
-          {
-            // may be an inner refactory
-            var cc = new CrossCompare(left, right);
-            lock (CrossSet) CrossSet.Add(cc);
-          }));
-        }
-      }
+              // cross compare all files for similatiries
+              tasks.Add(AddToSet(set.Refactored, left, right));
 
       Task.WaitAll(tasks.ToArray());
     }
@@ -131,36 +131,35 @@ namespace RefactorMuch.Parse
     {
       var tasks = new List<Task>();
       foreach (var left in leftSet.AllFiles)
-      {
         foreach (var right in rightSet.AllFiles)
-        {
-          if (left.name.Equals(right.name)) // same name
-          {
-            if (left.hash.Equals(right.hash)) // same contents
-            {
-              if (!left.localPath.Equals(right.localPath)) // different path => moved
-                // same file different local paths
-                tasks.Add(AddToSet(MovedSet, new CrossCompare(left, right, 1f)));
-            }
-            else // different contents... compare
-            {
-              tasks.Add(Task.Run(() =>
-              {
-                var changedCompare = new CrossCompare(left, right);
-                lock (ChangedSet) ChangedSet.Add(changedCompare);
-              }));
-            }
-          }
-          else if (left.hash.Equals(right.hash)) // different name, same content, may be renamed
-            tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
-          // Different name/contents, check if it may be a refactor
-          else tasks.Add(Task.Run(() =>
-          {
-            var cc = new CrossCompare(left, right);
-            lock (CrossSet) CrossSet.Add(cc);
-          }));
-        }
-      }
+          if (left.name == right.name)
+            // same name
+            if (left.localPath == right.localPath)
+              // same path
+              if (left.hash == right.hash)
+                // exact match
+                tasks.Add(AddToSet(UnchangedFileSet, left, right, 1f));
+              else
+                // matching names and folders
+                tasks.Add(AddToSet(ChangedSet, left, right));
+            // same name, different path
+            else if (left.hash == right.hash)
+              // moved
+              tasks.Add(AddToSet(MovedSet, left, right, 1f));
+            else
+              // moved and changed (probably)
+              tasks.Add(AddToSet(ChangedSet, left, right));
+          else if (left.hash == right.hash)
+            // same file, different names
+            if (left.localPath == right.localPath)
+              // renamed
+              tasks.Add(AddToSet(RenamedSet, left, right, 1f));
+            else
+              // moved
+              tasks.Add(AddToSet(MovedSet, left, right, 1f));
+          else
+            // different names, different files, check for refactor
+            tasks.Add(AddToSet(CrossSet, left, right));
 
       Task.WaitAll(tasks.ToArray());
     }

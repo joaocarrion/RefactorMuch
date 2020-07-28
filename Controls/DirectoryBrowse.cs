@@ -1,12 +1,15 @@
 ﻿using Newtonsoft.Json.Linq;
 using RefactorMuch.Configuration;
+using RefactorMuch.Controls;
 using RefactorMuch.Controls.TreeNodes;
 using RefactorMuch.Parse;
 using RefactorMuch.Util;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -19,6 +22,8 @@ namespace RefactorMuch
     private JObject doc;
     private ConfigData config;
     private DirectoryCompare compare;
+    private ContextMenuStrip rootNodeMenu;
+    private Stopwatch processTime;
 
     public static string LeftPath { get; private set; }
     public static string RightPath { get; private set; }
@@ -37,6 +42,15 @@ namespace RefactorMuch
       config = ConfigData.GetInstance();
       doc = config.doc;
       LoadProps();
+
+      rootNodeMenu = new ContextMenuStrip();
+      rootNodeMenu.Items.Add(new ToolStripMenuItem("Diff..", null, DiffRoot));
+    }
+
+    private void DiffRoot(object sender, EventArgs e)
+    {
+      if (compare != null)
+        Tools.GetInstance().ToolDictionary[Tool.ToolType.Diff].Run(LeftPath, RightPath);
     }
 
     private void LoadProps()
@@ -96,10 +110,12 @@ namespace RefactorMuch
       else
       {
         btStartRefresh.Enabled = false;
-
         cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
         cbRightDirectory.Items.Add(cbRightDirectory.Text);
         ConfigSave();
+
+        processTime = new Stopwatch();
+        processTime.Start();
         Compare();
       }
     }
@@ -116,7 +132,6 @@ namespace RefactorMuch
 
     private async void Compare()
     {
-      btStartRefresh.Enabled = false;
       SuspendLayout();
 
       // TODO: Settings
@@ -131,12 +146,15 @@ namespace RefactorMuch
 
       // create root noew
       treeView1.Nodes.Add(new TreeNode($"Comparison: {LeftPath} x {RightPath}", 0, 0));
+      treeView1.Nodes[0].ContextMenuStrip = rootNodeMenu;
 
       // run tasks
       var tasks = MultiTask.Run(new Func<TreeNode>[]
       {
         () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), compare.DuplicateLeft); },
         () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
+        () => { return AddRefactored(new TreeNode("Left Refactored", 1, 1), compare.RefactoredLeft); },
+        () => { return AddRefactored(new TreeNode("Right Refactored", 1, 1), compare.RefactoredRight); },
         () => { return AddMoved(); },
         () => { return AddRenamed(); },
         () => { return AddChanged(); },
@@ -144,21 +162,24 @@ namespace RefactorMuch
       });
 
       Task.WaitAll(tasks);
+      processTime.Stop();
+      taskProgress1.Information = $"Processed in {processTime.ElapsedMilliseconds} ms";
 
       foreach (var t in tasks)
         treeView1.Nodes[0].Nodes.Add(t.Result);
 
-      System.GC.Collect();
       treeView1.Nodes[0].Expand();
       btStartRefresh.Enabled = true;
-
       ResumeLayout();
+
+      var forget = Task.Run(() => { System.GC.Collect(); });
     }
 
     private TreeNode AddMoved() => AddCompareNodes(new TreeNode("Moved Files", 2, 2), compare.MovedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
     private TreeNode AddRenamed() => AddCompareNodes(new TreeNode("Renamed Files", 2, 2), compare.RenamedSet, (CrossCompare compare) => { return new RenamedNode(compare, 3); });
     private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 4); });
     private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
+    private TreeNode AddRefactored(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new ChangedNode(compare, 4); });
     private TreeNode AddRefactored() => AddCompareNodes(new TreeNode("Refactored? Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
 
     private TreeNode AddCompareNodes(TreeNode root, CrossCompareSet set, Func<CrossCompare, TreeNode> constructor)

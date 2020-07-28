@@ -9,6 +9,7 @@ namespace RefactorMuch.Parse
       public string Path;
       public List<string> FileList;
       public CrossCompareSet Duplicates;
+      public CrossCompareSet Refactored;
       public Dictionary<string, FileCompareData> Files;
       public SortedSet<FileCompareData> AllFiles = new SortedSet<FileCompareData>();
     }
