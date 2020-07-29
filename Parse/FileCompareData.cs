@@ -5,7 +5,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 
 namespace RefactorMuch.Parse
 {
@@ -19,9 +18,13 @@ namespace RefactorMuch.Parse
     public string localPath;
     public DateTime lastChange;
     public string absolutePath;
-    public List<string> lineHash = new List<string>();
     public string parseError;
     public string basePath;
+    public int LineCount => lineHash.Length;
+
+    public IEnumerable<string> CodeLines => from line in lineHash select line.line;
+
+    private LineCompare[] lineHash;// = new List<string>();
 
     private static object setLock = new object();
     private static Dictionary<string, RuleSet> ruleSets = null;
@@ -29,9 +32,36 @@ namespace RefactorMuch.Parse
     private static RuleSet lineSet = null;
     private static RuleSet normalizeSet = null;
 
-    protected FileCompareData()
+    private class LineCompare : IComparable
     {
+      public long hash = 0;
+      public string line;
+      public string compareLine;
+
+      public LineCompare(string line)
+      {
+        compareLine = lineSet.Execute(line);
+        foreach (var c in compareLine)
+          hash += c;
+        this.line = line;
+      }
+
+      public int CompareTo(object obj)
+      {
+        var right = (LineCompare)obj;
+        if (hash == right.hash)
+          return string.Compare(compareLine, right.compareLine);
+        else
+          return hash < right.hash ? -1 : 1;
+      }
+
+      public override string ToString()
+      {
+        return $"{hash}: {line}";
+      }
     }
+
+    protected FileCompareData() { }
 
     public static void GetRules()
     {
@@ -70,16 +100,19 @@ namespace RefactorMuch.Parse
             fileString = normalizeSet.Execute(fileString);
 
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
-          data.lineHash = (from line in lineSet.Execute(fileString).Split('\n')
-                          where line.Length > 0
-                          select line).ToList();
-          //var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
-          //                   where line.Length > 0
-          //                   select Encoding.UTF8.GetBytes(line)).ToArray();
 
           using (var md5Hash = MD5.Create())
           {
-            data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
+            data.lineHash = (from line in fileString.Split('\n')
+                             where line.Length > 0
+                             select new LineCompare(line)).ToArray();
+             //                select line).ToList();
+             //select BitConverter.ToString(md5Hash.ComputeHash(Encoding.UTF8.GetBytes(line)))).ToList();
+             //var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
+             //                   where line.Length > 0
+             //                   select Encoding.UTF8.GetBytes(line)).ToArray();
+
+             data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
             //foreach (var line in lineCompare)
             //  data.lineHash.Add(BitConverter.ToString(md5Hash.ComputeHash(line)));
           }
@@ -91,7 +124,7 @@ namespace RefactorMuch.Parse
       return data;
     }
 
-    public override string ToString() => $"File: {name}, LocalPath: {localPath}, Path: {absolutePath}, Lines: {lineHash.Count}";
+    public override string ToString() => $"File: {name}, LocalPath: {localPath}, Path: {absolutePath}, Lines: {LineCount}";
     public override int GetHashCode() => absolutePath.GetHashCode();
     public override bool Equals(object obj) => string.Compare(absolutePath, ((FileCompareData)obj).absolutePath, true) == 0;
 
@@ -100,12 +133,22 @@ namespace RefactorMuch.Parse
     public FileCompareData SmallerLocalPath(FileCompareData other) => localPath.Length < other.localPath.Length ? this : other;
     public bool DifferentLocalFile(FileCompareData right) => !name.Equals(right.name) || !hash.Equals(right.hash) || !localPath.Equals(right.localPath);
 
+    private class LineComparerWithHash : IComparer<string>
+    {
+      public int Compare(string x, string y)
+      {
+        if (x.GetHashCode() == y.GetHashCode())
+          return string.Compare(x, y);
+        else return string.Compare(x, y);
+      }
+    }
+
     public int CrossCompareFiles(FileCompareData right)
     {
       if (string.Compare(extension, right.extension, true) != 0)
         return 0;
 
-      SortedSet<string> leftHashes = new SortedSet<string>();
+      SortedSet<LineCompare> leftHashes = new SortedSet<LineCompare>();
       foreach (var line in lineHash)
         leftHashes.Add(line);
 
@@ -114,7 +157,7 @@ namespace RefactorMuch.Parse
         if (leftHashes.Contains(line))
           ++equals;
 
-      return equals * 100 / Math.Max(lineHash.Count, right.lineHash.Count);
+      return equals * 100 / Math.Max(lineHash.Length, right.lineHash.Length);
     }
 
   }

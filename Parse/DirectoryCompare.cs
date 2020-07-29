@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json.Linq;
+using RefactorMuch.Configuration;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,9 +16,11 @@ namespace RefactorMuch.Parse
     private int directoryScanIndex = 0;
     private long crossCompareIndex = 0;
     private long totalCrossCompare = 0;
+    private Dictionary<string, int> changedRules = new Dictionary<string, int>();
 
     public string LeftPath { get; }
     public string RightPath { get; }
+
     public SortedSet<string> Filenames { get; private set; } = new SortedSet<string>();
     public Dictionary<string, FileCompareData> LeftFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
@@ -45,6 +50,27 @@ namespace RefactorMuch.Parse
       RightPath = right;
       FilterExtensions = filterExtensions.Split('|');
       ThreadPool.SetMaxThreads(7, 3);
+
+      GetComparisonRules();
+    }
+
+    private void GetComparisonRules()
+    {
+      var doc = ConfigData.GetInstance().doc;
+      if (doc.ContainsKey("comparisonRules"))
+      {
+        var compRules = doc.Value<JObject>("comparisonRules");
+        if (compRules.ContainsKey("changed"))
+        {
+          var array = compRules.Value<JArray>("changed");
+          foreach (var obj in array)
+          {
+            var exts = obj.Value<string>("extensions").Split('|');
+            foreach (var ext in exts)
+              changedRules.Add(ext, obj.Value<int>("minSimilarity"));
+          }
+        }
+      }
     }
 
     public async Task Parse()
@@ -105,9 +131,13 @@ namespace RefactorMuch.Parse
     {
       return Task.Run(() =>
       {
-        var debugName = name;
-        var cc = similarity == -1 ? new CrossCompare(left, right) : new CrossCompare(left, right, similarity);
-        lock (set) set.Add(cc);
+        if (left.extension == right.extension)
+        {
+          var min = changedRules[left.extension];
+          var cc = similarity == -1 ? new CrossCompare(left, right) : new CrossCompare(left, right, similarity);
+          if (cc.similarity >= min)
+            lock (set) set.Add(cc);
+        }
       });
     }
 
@@ -116,12 +146,12 @@ namespace RefactorMuch.Parse
       var tasks = new List<Task>();
       foreach (var left in set.AllFiles)
       {
-        if (left.lineHash.Count == 0)
+        if (left.LineCount == 0)
           EmptyFilesLeft.Add(left);
         else
           foreach (var right in set.AllFiles)
           {
-            if (right.lineHash.Count == 0) continue;
+            if (right.LineCount== 0) continue;
             if (left != right && !left.Equals(right))
               if (left.name == right.name)
                 // same name

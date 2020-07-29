@@ -359,5 +359,21 @@ namespace RefactorMuch
       dictionary.TryGetValue(filename, out file);
       return file;
     }
+
+    private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
+    {
+      if (treeView1.SelectedNode is FileDataNode)
+      {
+        SuspendLayout();
+        filePreview.Clear();
+        foreach (string line in (treeView1.SelectedNode as FileDataNode).CodeLines)
+          filePreview.AppendText(line + "\n");
+
+        filePreview.SelectAll();
+        filePreview.SelectionIndent = 24;
+        filePreview.DeselectAll();
+        ResumeLayout();
+      }
+    }
   }
 }

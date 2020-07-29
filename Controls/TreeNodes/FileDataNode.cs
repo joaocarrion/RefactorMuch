@@ -1,4 +1,5 @@
 ﻿using RefactorMuch.Parse;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
@@ -30,6 +31,8 @@ namespace RefactorMuch.Controls.TreeNodes
 
     private static object menuLock = new object();
     private static ContextMenuStrip menuStrip = null;
+
+    public IEnumerable<string> CodeLines => file.CodeLines;
 
     private static ContextMenuStrip GetMenuStrip()
     {

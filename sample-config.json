@@ -17,10 +17,17 @@
       "parameters": "-r"
     }
   ],
+  "comparisonRules": {
+    "changed": [
+      { "extensions": ".cs", "minSimilarity": 70 },
+      { "extensions": ".prefab|.unity", "minSimilarity": 90 }
+    ]
+  },
   "rules": [
     {
       "name": "FileCompare",
       "description": "Rules for comparing an entire file",
+      "extension": ".cs",
       "rules": [
         {
           "name": "Block Comments",
@@ -42,6 +49,7 @@
     {
       "name": "LineCompare",
       "description": "Rules for comparing an entire file",
+      "extension": ".cs",
       "rules": [
         {
           "name": "Block Comments",
