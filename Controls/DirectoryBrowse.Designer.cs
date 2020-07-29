@@ -41,7 +41,13 @@
       this.updateProgress = new System.Windows.Forms.Timer(this.components);
       this.treeView1 = new System.Windows.Forms.TreeView();
       this.imageList1 = new System.Windows.Forms.ImageList(this.components);
+      this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+      this.filePreview = new System.Windows.Forms.RichTextBox();
       this.taskProgress1 = new RefactorMuch.Controls.TaskProgress();
+      ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
+      this.splitContainer1.Panel1.SuspendLayout();
+      this.splitContainer1.Panel2.SuspendLayout();
+      this.splitContainer1.SuspendLayout();
       this.SuspendLayout();
       // 
       // label1
@@ -61,13 +67,13 @@
       this.cbLeftDirectory.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
       this.cbLeftDirectory.Location = new System.Drawing.Point(86, 8);
       this.cbLeftDirectory.Name = "cbLeftDirectory";
-      this.cbLeftDirectory.Size = new System.Drawing.Size(296, 21);
+      this.cbLeftDirectory.Size = new System.Drawing.Size(827, 21);
       this.cbLeftDirectory.TabIndex = 0;
       // 
       // btBrowseLeft
       // 
       this.btBrowseLeft.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btBrowseLeft.Location = new System.Drawing.Point(388, 8);
+      this.btBrowseLeft.Location = new System.Drawing.Point(919, 8);
       this.btBrowseLeft.Name = "btBrowseLeft";
       this.btBrowseLeft.Size = new System.Drawing.Size(75, 23);
       this.btBrowseLeft.TabIndex = 4;
@@ -78,7 +84,7 @@
       // btStartRefresh
       // 
       this.btStartRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btStartRefresh.Location = new System.Drawing.Point(469, 40);
+      this.btStartRefresh.Location = new System.Drawing.Point(1000, 40);
       this.btStartRefresh.Name = "btStartRefresh";
       this.btStartRefresh.Size = new System.Drawing.Size(108, 23);
       this.btStartRefresh.TabIndex = 2;
@@ -89,7 +95,7 @@
       // btBrowseRight
       // 
       this.btBrowseRight.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btBrowseRight.Location = new System.Drawing.Point(388, 40);
+      this.btBrowseRight.Location = new System.Drawing.Point(919, 40);
       this.btBrowseRight.Name = "btBrowseRight";
       this.btBrowseRight.Size = new System.Drawing.Size(75, 23);
       this.btBrowseRight.TabIndex = 5;
@@ -104,7 +110,7 @@
       this.cbRightDirectory.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
       this.cbRightDirectory.Location = new System.Drawing.Point(86, 42);
       this.cbRightDirectory.Name = "cbRightDirectory";
-      this.cbRightDirectory.Size = new System.Drawing.Size(296, 21);
+      this.cbRightDirectory.Size = new System.Drawing.Size(827, 21);
       this.cbRightDirectory.TabIndex = 1;
       // 
       // label3
@@ -119,7 +125,7 @@
       // btSettings
       // 
       this.btSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.btSettings.Location = new System.Drawing.Point(469, 8);
+      this.btSettings.Location = new System.Drawing.Point(1000, 8);
       this.btSettings.Name = "btSettings";
       this.btSettings.Size = new System.Drawing.Size(108, 23);
       this.btSettings.TabIndex = 3;
@@ -134,19 +140,18 @@
       // 
       // treeView1
       // 
-      this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+      this.treeView1.Dock = System.Windows.Forms.DockStyle.Fill;
       this.treeView1.ImageIndex = 0;
       this.treeView1.ImageList = this.imageList1;
-      this.treeView1.Location = new System.Drawing.Point(5, 69);
+      this.treeView1.Location = new System.Drawing.Point(0, 0);
       this.treeView1.Margin = new System.Windows.Forms.Padding(2, 3, 2, 3);
       this.treeView1.Name = "treeView1";
       this.treeView1.SelectedImageIndex = 0;
       this.treeView1.ShowNodeToolTips = true;
       this.treeView1.ShowRootLines = false;
-      this.treeView1.Size = new System.Drawing.Size(573, 556);
+      this.treeView1.Size = new System.Drawing.Size(350, 556);
       this.treeView1.TabIndex = 14;
+      this.treeView1.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeView1_AfterSelect);
       this.treeView1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.MouseClickTreeView);
       // 
       // imageList1
@@ -159,6 +164,37 @@
       this.imageList1.Images.SetKeyName(3, "changed.png");
       this.imageList1.Images.SetKeyName(4, "similar.png");
       // 
+      // splitContainer1
+      // 
+      this.splitContainer1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+      this.splitContainer1.Location = new System.Drawing.Point(6, 69);
+      this.splitContainer1.Name = "splitContainer1";
+      // 
+      // splitContainer1.Panel1
+      // 
+      this.splitContainer1.Panel1.Controls.Add(this.treeView1);
+      this.splitContainer1.Panel1MinSize = 350;
+      // 
+      // splitContainer1.Panel2
+      // 
+      this.splitContainer1.Panel2.Controls.Add(this.filePreview);
+      this.splitContainer1.Size = new System.Drawing.Size(1102, 556);
+      this.splitContainer1.SplitterDistance = 350;
+      this.splitContainer1.TabIndex = 15;
+      // 
+      // filePreview
+      // 
+      this.filePreview.Dock = System.Windows.Forms.DockStyle.Fill;
+      this.filePreview.Font = new System.Drawing.Font("Lucida Console", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.filePreview.Location = new System.Drawing.Point(0, 0);
+      this.filePreview.Name = "filePreview";
+      this.filePreview.Size = new System.Drawing.Size(748, 556);
+      this.filePreview.TabIndex = 0;
+      this.filePreview.Text = "";
+      this.filePreview.WordWrap = false;
+      // 
       // taskProgress1
       // 
       this.taskProgress1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
@@ -170,14 +206,14 @@
       this.taskProgress1.Margin = new System.Windows.Forms.Padding(2, 1, 2, 1);
       this.taskProgress1.Name = "taskProgress1";
       this.taskProgress1.PercentDone = 0;
-      this.taskProgress1.Size = new System.Drawing.Size(571, 34);
+      this.taskProgress1.Size = new System.Drawing.Size(1102, 34);
       this.taskProgress1.Style = System.Windows.Forms.ProgressBarStyle.Blocks;
       this.taskProgress1.TabIndex = 13;
       // 
       // DirectoryBrowse
       // 
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-      this.Controls.Add(this.treeView1);
+      this.Controls.Add(this.splitContainer1);
       this.Controls.Add(this.taskProgress1);
       this.Controls.Add(this.btSettings);
       this.Controls.Add(this.btBrowseRight);
@@ -188,8 +224,12 @@
       this.Controls.Add(this.cbLeftDirectory);
       this.Controls.Add(this.label1);
       this.Name = "DirectoryBrowse";
-      this.Size = new System.Drawing.Size(580, 664);
+      this.Size = new System.Drawing.Size(1111, 664);
       this.Load += new System.EventHandler(this.DirectoryBrowse_Load);
+      this.splitContainer1.Panel1.ResumeLayout(false);
+      this.splitContainer1.Panel2.ResumeLayout(false);
+      ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
+      this.splitContainer1.ResumeLayout(false);
       this.ResumeLayout(false);
       this.PerformLayout();
 
@@ -209,5 +249,7 @@
     private System.Windows.Forms.Timer updateProgress;
     private System.Windows.Forms.TreeView treeView1;
     private System.Windows.Forms.ImageList imageList1;
+    private System.Windows.Forms.SplitContainer splitContainer1;
+    private System.Windows.Forms.RichTextBox filePreview;
   }
 }
