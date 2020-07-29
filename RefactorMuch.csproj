@@ -107,6 +107,7 @@
     <Compile Include="Parse\CrossCompareSet.cs" />
     <Compile Include="Parse\DirectoryCompare.cs" />
     <Compile Include="Parse\FileCompareData.cs" />
+    <Compile Include="Parse\LineCompare.cs" />
     <Compile Include="Parse\Rule.cs" />
     <Compile Include="Parse\RuleSet.cs" />
     <Compile Include="Program.cs" />

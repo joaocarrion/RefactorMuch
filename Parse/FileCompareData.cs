@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace RefactorMuch.Parse
 {
-  public class FileCompareData : IComparable<FileCompareData>
+  public partial class FileCompareData : IComparable<FileCompareData>
   {
     public bool parsed = false;
     public string name;
@@ -20,6 +20,8 @@ namespace RefactorMuch.Parse
     public string absolutePath;
     public string parseError;
     public string basePath;
+    public bool empty = false;
+
     public int LineCount => lineHash.Length;
 
     public IEnumerable<string> CodeLines => from line in lineHash select line.line;
@@ -31,35 +33,6 @@ namespace RefactorMuch.Parse
     private static RuleSet fullSet = null;
     private static RuleSet lineSet = null;
     private static RuleSet normalizeSet = null;
-
-    private class LineCompare : IComparable
-    {
-      public long hash = 0;
-      public string line;
-      public string compareLine;
-
-      public LineCompare(string line)
-      {
-        compareLine = lineSet.Execute(line);
-        foreach (var c in compareLine)
-          hash += c;
-        this.line = line;
-      }
-
-      public int CompareTo(object obj)
-      {
-        var right = (LineCompare)obj;
-        if (hash == right.hash)
-          return string.Compare(compareLine, right.compareLine);
-        else
-          return hash < right.hash ? -1 : 1;
-      }
-
-      public override string ToString()
-      {
-        return $"{hash}: {line}";
-      }
-    }
 
     protected FileCompareData() { }
 
@@ -100,21 +73,16 @@ namespace RefactorMuch.Parse
             fileString = normalizeSet.Execute(fileString);
 
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
-
           using (var md5Hash = MD5.Create())
           {
+            if (fullCompare.Length == 0)
+              data.empty = true;
+            else
+              data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
+
             data.lineHash = (from line in fileString.Split('\n')
                              where line.Length > 0
                              select new LineCompare(line)).ToArray();
-             //                select line).ToList();
-             //select BitConverter.ToString(md5Hash.ComputeHash(Encoding.UTF8.GetBytes(line)))).ToList();
-             //var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
-             //                   where line.Length > 0
-             //                   select Encoding.UTF8.GetBytes(line)).ToArray();
-
-             data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
-            //foreach (var line in lineCompare)
-            //  data.lineHash.Add(BitConverter.ToString(md5Hash.ComputeHash(line)));
           }
           data.parsed = true;
         }
@@ -145,21 +113,25 @@ namespace RefactorMuch.Parse
 
     public int CrossCompareFiles(FileCompareData right)
     {
+      if (empty || right.empty)
+        return 0;
+
       if (string.Compare(extension, right.extension, true) != 0)
         return 0;
 
       SortedSet<LineCompare> leftHashes = new SortedSet<LineCompare>();
       foreach (var line in lineHash)
-        leftHashes.Add(line);
+        if (!line.EmptyLine)
+          leftHashes.Add(line);
 
       int equals = 0;
       foreach (var line in right.lineHash)
-        if (leftHashes.Contains(line))
-          ++equals;
+        if (!line.EmptyLine)
+          if (leftHashes.Contains(line))
+            ++equals;
 
       return equals * 100 / Math.Max(lineHash.Length, right.lineHash.Length);
     }
 
   }
 }
-
