@@ -8,7 +8,7 @@ namespace RefactorMuch.Controls.TreeNodes
   {
     public ChangedNode(CrossCompare compare, int imageIndex) : base(compare, imageIndex)
     {
-      Text = $"{Math.Round(compare.similarity * 100f)}%: {compare.left.name}";
+      Text = $"{compare.similarity:00}%: {compare.left.name}";
     }
 
     private static ContextMenuStrip menuStrip = null;

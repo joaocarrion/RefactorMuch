@@ -22,6 +22,11 @@ namespace RefactorMuch.Controls
       return MessageBox.Show(text, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
+    public static void InfoDialog(string text)
+    {
+      MessageBox.Show(text, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
     public static bool RemoveFile(FileCompareData file)
     {
       try

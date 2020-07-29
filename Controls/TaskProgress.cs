@@ -11,6 +11,7 @@ namespace RefactorMuch.Controls
 
     public int PercentDone { get => progressBar1.Value; set => progressBar1.Value = value; }
     public string CurrentTask { get => lbTaskInfo.Text; set => lbTaskInfo.Text = value; }
+    public string Information { get => lbInformation.Text; set => lbInformation.Text = value; }
     public ProgressBarStyle Style { get => progressBar1.Style; set => progressBar1.Style = value; }
   }
 }

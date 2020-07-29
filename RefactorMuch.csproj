@@ -86,7 +86,7 @@
     <Compile Include="Controls\TreeNodes\FileDataNode.cs" />
     <Compile Include="Controls\TreeNodes\MovedNode.cs" />
     <Compile Include="Controls\TreeNodes\RenamedNode.cs" />
-    <Compile Include="Controls\TreeNodes\SimilarNode.cs" />
+    <Compile Include="Controls\TreeNodes\RefactoredNode.cs" />
     <Compile Include="Controls\TaskProgress.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -94,6 +94,7 @@
       <DependentUpon>TaskProgress.cs</DependentUpon>
     </Compile>
     <Compile Include="Controls\Tools.cs" />
+    <Compile Include="Controls\TreeNodes\UnchangedNode.cs" />
     <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -101,6 +102,7 @@
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Parse\CompareSets.cs" />
+    <Compile Include="Parse\CRC64.cs" />
     <Compile Include="Parse\CrossCompare.cs" />
     <Compile Include="Parse\CrossCompareSet.cs" />
     <Compile Include="Parse\DirectoryCompare.cs" />

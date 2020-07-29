@@ -1,12 +1,18 @@
 ﻿using Newtonsoft.Json.Linq;
 using RefactorMuch.Configuration;
+using RefactorMuch.Controls;
 using RefactorMuch.Controls.TreeNodes;
 using RefactorMuch.Parse;
 using RefactorMuch.Util;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,14 +24,15 @@ namespace RefactorMuch
 
     private JObject doc;
     private ConfigData config;
+    private Stopwatch processTime;
     private DirectoryCompare compare;
+    private ContextMenuStrip rootNodeMenu;
+    private SortedSet<FileCompareData> unlisted = new SortedSet<FileCompareData>();
 
     public static string LeftPath { get; private set; }
     public static string RightPath { get; private set; }
-
-    public FinishedParsing OnFinishedParsing { get; set; }
-
     public Dictionary<string, object> properties = new Dictionary<string, object>();
+    private string filterExtensions;
 
     public DirectoryBrowse()
     {
@@ -37,6 +44,28 @@ namespace RefactorMuch
       config = ConfigData.GetInstance();
       doc = config.doc;
       LoadProps();
+
+      rootNodeMenu = new ContextMenuStrip();
+      rootNodeMenu.Items.Add(new ToolStripMenuItem("Compare left and right folders...", null, DiffRoot));
+    }
+
+    private void DiffRoot(object sender, EventArgs e)
+    {
+      if (compare != null)
+      {
+        if (treeView1.SelectedNode == treeView1.Nodes[0])
+          Tools.GetInstance().ToolDictionary[Tool.ToolType.Diff].Run(LeftPath, RightPath);
+        else
+        {
+          var leftPath = LeftPath + treeView1.SelectedNode.Text;
+          var rightPath = RightPath + treeView1.SelectedNode.Text;
+
+          if (Directory.Exists(leftPath) && Directory.Exists(rightPath))
+            Tools.GetInstance().ToolDictionary[Tool.ToolType.Diff].Run(leftPath, rightPath);
+          else
+            DialogHelper.InfoDialog("Directory does not exist in the other context");
+        }
+      }
     }
 
     private void LoadProps()
@@ -56,6 +85,23 @@ namespace RefactorMuch
         cbLeftDirectory.Items.AddRange(lastItems);
         cbRightDirectory.Items.AddRange(lastItems);
       }
+
+      filterExtensions = "*.*";
+      if (doc.ContainsKey("fileFilters"))
+      {
+        var filters = doc.Value<JObject>("fileFilters");
+        var exts = filters.Value<JArray>("extensions");
+
+        StringBuilder extensions = new StringBuilder();
+        foreach (var ext in exts)
+        {
+          extensions.Append(ext.Value<string>());
+          extensions.Append('|');
+        }
+        extensions.Remove(extensions.Length - 1, 1);
+        filterExtensions = extensions.ToString();
+      }
+
     }
 
     private void ConfigSave()
@@ -96,14 +142,15 @@ namespace RefactorMuch
       else
       {
         btStartRefresh.Enabled = false;
-
         cbLeftDirectory.Items.Add(cbLeftDirectory.Text);
         cbRightDirectory.Items.Add(cbRightDirectory.Text);
         ConfigSave();
+
+        processTime = new Stopwatch();
+        processTime.Start();
         Compare();
       }
     }
-
 
     private void UpdateProgress(object sender, EventArgs e)
     {
@@ -116,55 +163,137 @@ namespace RefactorMuch
 
     private async void Compare()
     {
-      btStartRefresh.Enabled = false;
       SuspendLayout();
-
-      // TODO: Settings
-      var exts = "*.cs";
       LeftPath = cbLeftDirectory.Text;
       RightPath = cbRightDirectory.Text;
       treeView1.Nodes.Clear();
 
       // Directory compare
-      compare = new DirectoryCompare(LeftPath, RightPath, exts);
+      compare = new DirectoryCompare(LeftPath, RightPath, filterExtensions);
       await compare.Parse();
 
       // create root noew
       treeView1.Nodes.Add(new TreeNode($"Comparison: {LeftPath} x {RightPath}", 0, 0));
+      treeView1.Nodes[0].ContextMenuStrip = rootNodeMenu;
+
+      unlisted.Clear();
+      unlisted.UnionWith(compare.LeftFiles.Values);
+      unlisted.UnionWith(compare.RightFiles.Values);
 
       // run tasks
       var tasks = MultiTask.Run(new Func<TreeNode>[]
       {
-        () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), compare.DuplicateLeft); },
-        () => { return AddDuplicates(new TreeNode("Right Duplicates", 1, 1), compare.DuplicateRight); },
+        () => { return AddInconsistencies(new TreeNode("Left Analysis", 1, 1), compare.DuplicateLeft, compare.RefactoredLeft, compare.EmptyFilesLeft); },
+        () => { return AddInconsistencies(new TreeNode("Right Analysis", 1, 1), compare.DuplicateRight, compare.RefactoredRight, compare.EmptyFilesRight); },
         () => { return AddMoved(); },
         () => { return AddRenamed(); },
         () => { return AddChanged(); },
-        () => { return AddRefactored(); }
+        () => { return AddRefactored(); },
+        () => { return AddUnchangedFiles(); }
       });
 
       Task.WaitAll(tasks);
-
       foreach (var t in tasks)
         treeView1.Nodes[0].Nodes.Add(t.Result);
 
-      System.GC.Collect();
+      treeView1.Nodes[0].Nodes.Add(AddUnlisted());
+
+      processTime.Stop();
+      taskProgress1.Information = $"Processed in {processTime.ElapsedMilliseconds} ms";
+
       treeView1.Nodes[0].Expand();
       btStartRefresh.Enabled = true;
-
       ResumeLayout();
+
+      var forget = Task.Run(() => { System.GC.Collect(); });
     }
 
     private TreeNode AddMoved() => AddCompareNodes(new TreeNode("Moved Files", 2, 2), compare.MovedSet, (CrossCompare compare) => { return new MovedNode(compare, 3); });
     private TreeNode AddRenamed() => AddCompareNodes(new TreeNode("Renamed Files", 2, 2), compare.RenamedSet, (CrossCompare compare) => { return new RenamedNode(compare, 3); });
     private TreeNode AddChanged() => AddCompareNodes(new TreeNode("Changed Files", 3, 3), compare.ChangedSet, (CrossCompare compare) => { return new ChangedNode(compare, 4); });
     private TreeNode AddDuplicates(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new DuplicateNode(compare, 1); });
+    private TreeNode AddRefactored(TreeNode root, CrossCompareSet set) => AddCompareNodes(root, set, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
     private TreeNode AddRefactored() => AddCompareNodes(new TreeNode("Refactored? Files", 4, 4), compare.CrossSet, (CrossCompare compare) => { return new RefactoredNode(compare, 4); });
+    private TreeNode AddUnchangedFiles() => AddCompareNodes(new TreeNode("Unchanged Files", 1, 1), compare.UnchangedFileSet, (CrossCompare compare) => { return new UnchangedNode(compare, 4); });
+
+    private TreeNode AddUnlisted()
+    {
+      var root = new TreeNode("Unlisted", 1, 1);
+      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(); //new StringCompareSizeFirst()
+
+      // create directory nodes
+      foreach (var file in unlisted)
+      {
+        if (!duplicatePath.ContainsKey(file.localPath))
+        {
+          var node = new TreeNode(file.localPath, 1, 1);
+          node.ContextMenuStrip = rootNodeMenu;
+          duplicatePath.Add(file.localPath, node);
+        }
+      }
+
+      // add file nodes
+      foreach (var file in unlisted)
+        duplicatePath[file.localPath].Nodes.Add(new FileDataNode(file, 1));
+
+      // add directory nodes to the tree
+      foreach (var node in duplicatePath)
+        root.Nodes.Add(node.Value);
+
+      return root;
+    }
+
+    private TreeNode AddEmpty(TreeNode root, SortedSet<FileCompareData> data)
+    {
+      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(); //new StringCompareSizeFirst()
+
+      // create directory nodes
+      foreach (var file in data)
+      {
+        if (!duplicatePath.ContainsKey(file.localPath))
+        {
+          var node = new TreeNode(file.localPath, 1, 1);
+          node.ContextMenuStrip = rootNodeMenu;
+          duplicatePath.Add(file.localPath, node);
+        }
+      }
+
+      // add file nodes
+      foreach (var file in data)
+      {
+        lock (unlisted)
+          unlisted.Remove(file);
+
+        duplicatePath[file.localPath].Nodes.Add(new FileDataNode(file, 1));
+      }
+
+      // add directory nodes to the tree
+      foreach (var node in duplicatePath)
+        root.Nodes.Add(node.Value);
+
+      return root;
+    }
+
+    private TreeNode AddInconsistencies(TreeNode root, CrossCompareSet duplicates, CrossCompareSet refactored, SortedSet<FileCompareData> empty)
+    {
+      var tasks = MultiTask.Run(new Func<TreeNode>[]
+      {
+        () => { return AddDuplicates(new TreeNode("Left Duplicates", 1, 1), duplicates); },
+        () => { return AddRefactored(new TreeNode("Left Refactored", 1, 1), refactored); },
+        () => { return AddEmpty(new TreeNode("Left Empty", 1, 1), empty); },
+      });
+
+      Task.WhenAll(tasks);
+      foreach (var t in tasks)
+        root.Nodes.Add(t.Result);
+
+      return root;
+    }
 
     private TreeNode AddCompareNodes(TreeNode root, CrossCompareSet set, Func<CrossCompare, TreeNode> constructor)
     {
       // sort directories
-      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(new StringCompareSizeFirst());
+      SortedList<string, TreeNode> duplicatePath = new SortedList<string, TreeNode>(); //new StringCompareSizeFirst()
 
       // sort filenames
       var nameFirst = set.ToArray();
@@ -175,12 +304,23 @@ namespace RefactorMuch
       {
         var smallerPath = file.left.SmallerLocalPath(file.right);
         if (!duplicatePath.ContainsKey(smallerPath.localPath))
-          duplicatePath.Add(smallerPath.localPath, new TreeNode(smallerPath.localPath, 1, 1));
+        {
+          var node = new TreeNode(smallerPath.localPath, 1, 1);
+          node.ContextMenuStrip = rootNodeMenu;
+          duplicatePath.Add(smallerPath.localPath, node);
+        }
       }
 
       // add file nodes
       foreach (var file in nameFirst)
+      {
+        lock (unlisted)
+        {
+          unlisted.Remove(file.left);
+          unlisted.Remove(file.right);
+        }
         duplicatePath[file.left.SmallerLocalPath(file.right).localPath].Nodes.Add(constructor(file));
+      }
 
       // add directory nodes to the tree
       foreach (var node in duplicatePath)

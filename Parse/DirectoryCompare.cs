@@ -19,12 +19,17 @@ namespace RefactorMuch.Parse
     public SortedSet<string> Filenames { get; private set; } = new SortedSet<string>();
     public Dictionary<string, FileCompareData> LeftFiles { get; private set; } = new Dictionary<string, FileCompareData>();
     public Dictionary<string, FileCompareData> RightFiles { get; private set; } = new Dictionary<string, FileCompareData>();
-    public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(0f, 1f);
-    public CrossCompareSet RenamedSet { get; private set; } = new CrossCompareSet(1f);
-    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(0.51f);
+    public CrossCompareSet DuplicateLeft { get; private set; } = new CrossCompareSet(100);
+    public CrossCompareSet DuplicateRight { get; private set; } = new CrossCompareSet(100);
+    public CrossCompareSet RefactoredLeft { get; private set; } = new CrossCompareSet(70);
+    public CrossCompareSet RefactoredRight { get; private set; } = new CrossCompareSet(70);
+    public CrossCompareSet MovedSet { get; private set; } = new CrossCompareSet(70);
+    public CrossCompareSet ChangedSet { get; private set; } = new CrossCompareSet(0, 100);
+    public CrossCompareSet RenamedSet { get; private set; } = new CrossCompareSet(100);
+    public CrossCompareSet CrossSet { get; private set; } = new CrossCompareSet(51);
+    public CrossCompareSet UnchangedFileSet { get; private set; } = new CrossCompareSet(100);
+    public SortedSet<FileCompareData> EmptyFilesLeft { get; private set; } = new SortedSet<FileCompareData>();
+    public SortedSet<FileCompareData> EmptyFilesRight { get; private set; } = new SortedSet<FileCompareData>();
 
     // TODO: In the future, semantic comparison would be nice
 
@@ -32,13 +37,13 @@ namespace RefactorMuch.Parse
 
     public string TaskName { get; private set; } = "Idle";
 
-    public string FileFilter { get; }
+    public string []FilterExtensions { get; }
 
-    public DirectoryCompare(string left, string right, string fileFilter)
+    public DirectoryCompare(string left, string right, string filterExtensions)
     {
       LeftPath = left;
       RightPath = right;
-      FileFilter = fileFilter;
+      FilterExtensions = filterExtensions.Split('|');
       ThreadPool.SetMaxThreads(7, 3);
     }
 
@@ -57,6 +62,8 @@ namespace RefactorMuch.Parse
         FileList = null,
         Files = LeftFiles,
         Duplicates = DuplicateLeft,
+        Refactored = RefactoredLeft,
+        EmptyFiles = EmptyFilesLeft
       };
 
       CompareSets right = new CompareSets
@@ -65,6 +72,8 @@ namespace RefactorMuch.Parse
         Path = RightPath,
         Files = RightFiles,
         Duplicates = DuplicateRight,
+        Refactored = RefactoredRight,
+        EmptyFiles = EmptyFilesRight
       };
 
       // Parse files left and right
@@ -92,9 +101,14 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
-    private Task AddToSet(CrossCompareSet set, CrossCompare compare)
+    private Task AddToSet(string name, CrossCompareSet set, FileCompareData left, FileCompareData right, int similarity = -1)
     {
-      return Task.Run(() => { lock (set) set.Add(compare); });
+      return Task.Run(() =>
+      {
+        var debugName = name;
+        var cc = similarity == -1 ? new CrossCompare(left, right) : new CrossCompare(left, right, similarity);
+        lock (set) set.Add(cc);
+      });
     }
 
     private void CrossCompareSelf(CompareSets set)
@@ -102,26 +116,28 @@ namespace RefactorMuch.Parse
       var tasks = new List<Task>();
       foreach (var left in set.AllFiles)
       {
-        foreach (var right in set.AllFiles)
-        {
-          // same file on both sets
-          if (left.Equals(right)) continue;
-          // same file contents
-          if (left.hash.Equals(right.hash))
+        if (left.lineHash.Count == 0)
+          EmptyFilesLeft.Add(left);
+        else
+          foreach (var right in set.AllFiles)
           {
-            if (left.name.Equals(right.name))
-              // duplicate
-              tasks.Add(AddToSet(set.Duplicates, new CrossCompare(left, right, 1f)));
-            else
-              tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
+            if (right.lineHash.Count == 0) continue;
+            if (left != right && !left.Equals(right))
+              if (left.name == right.name)
+                // same name
+                if (left.hash == right.hash)
+                  // local folder must be different
+                  tasks.Add(AddToSet("self.duplicates", set.Duplicates, left, right, 100));
+                else
+                  // local folder must be different, however, the file has the same name... duplicate?
+                  tasks.Add(AddToSet("self.cross", CrossSet, left, right));
+              else if (left.hash == right.hash)
+                // renamed?
+                tasks.Add(AddToSet("self.renamed", RefactoredLeft, left, right, 100));
+              else
+                // cross compare all files for similatiries
+                tasks.Add(AddToSet("self.refactor", set.Refactored, left, right));
           }
-          else tasks.Add(Task.Run(() =>
-          {
-            // may be an inner refactory
-            var cc = new CrossCompare(left, right);
-            lock (CrossSet) CrossSet.Add(cc);
-          }));
-        }
       }
 
       Task.WaitAll(tasks.ToArray());
@@ -134,31 +150,34 @@ namespace RefactorMuch.Parse
       {
         foreach (var right in rightSet.AllFiles)
         {
-          if (left.name.Equals(right.name)) // same name
-          {
-            if (left.hash.Equals(right.hash)) // same contents
-            {
-              if (!left.localPath.Equals(right.localPath)) // different path => moved
-                // same file different local paths
-                tasks.Add(AddToSet(MovedSet, new CrossCompare(left, right, 1f)));
-            }
-            else // different contents... compare
-            {
-              tasks.Add(Task.Run(() =>
-              {
-                var changedCompare = new CrossCompare(left, right);
-                lock (ChangedSet) ChangedSet.Add(changedCompare);
-              }));
-            }
-          }
-          else if (left.hash.Equals(right.hash)) // different name, same content, may be renamed
-            tasks.Add(AddToSet(RenamedSet, new CrossCompare(left, right, 1f)));
-          // Different name/contents, check if it may be a refactor
-          else tasks.Add(Task.Run(() =>
-          {
-            var cc = new CrossCompare(left, right);
-            lock (CrossSet) CrossSet.Add(cc);
-          }));
+          if (left.name == right.name)
+            // same name
+            if (left.localPath == right.localPath)
+              // same path
+              if (left.hash == right.hash)
+                // exact match
+                tasks.Add(AddToSet("other.unchanged", UnchangedFileSet, left, right, 100));
+              else
+                // matching names and folders
+                tasks.Add(AddToSet("other.changed", ChangedSet, left, right));
+            // same name, different path
+            else if (left.hash == right.hash)
+              // moved
+              tasks.Add(AddToSet("other.moved", MovedSet, left, right, 100));
+            else
+              // moved and changed (probably)
+              tasks.Add(AddToSet("other.changed2", ChangedSet, left, right));
+          else if (left.hash == right.hash)
+            // same file, different names
+            if (left.localPath == right.localPath)
+              // renamed
+              tasks.Add(AddToSet("other.renamed", RenamedSet, left, right, 100));
+            else
+              // moved
+              tasks.Add(AddToSet("other.moved2", MovedSet, left, right, 100));
+          else
+            // different names, different files, check for refactor
+            tasks.Add(AddToSet("other.cross2", CrossSet, left, right));
         }
       }
 
@@ -213,17 +232,11 @@ namespace RefactorMuch.Parse
 
     private void GetFiles(string path, List<string> files)
     {
-      string[] filters = GetFilters();
-      foreach (var filter in filters)
+      foreach (var filter in FilterExtensions)
       {
         var filePaths = Directory.GetFiles(path, filter);
         files.AddRange(filePaths);
       }
-    }
-
-    private string[] GetFilters()
-    {
-      return FileFilter.Split(',');
     }
 
     private int ProgressCount()

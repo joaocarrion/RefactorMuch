@@ -5,11 +5,11 @@ namespace RefactorMuch.Parse
 {
   public class CrossCompareSet : ISet<CrossCompare>
   {
-    private float minValue = 0f;
-    private float maxValue = 1.1f;
+    private int minValue = 0;
+    private int maxValue = 100;
     private SortedSet<CrossCompare> set = new SortedSet<CrossCompare>();
 
-    public CrossCompareSet(float minValue, float maxValue = 1.1f)
+    public CrossCompareSet(int minValue, int maxValue = 101)
     {
       this.minValue = minValue;
       this.maxValue = maxValue;

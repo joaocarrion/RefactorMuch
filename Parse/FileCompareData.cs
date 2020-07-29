@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace RefactorMuch.Parse
 {
@@ -69,15 +70,18 @@ namespace RefactorMuch.Parse
             fileString = normalizeSet.Execute(fileString);
 
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
-          var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
-                             where line.Length > 0
-                             select Encoding.UTF8.GetBytes(line)).ToArray();
+          data.lineHash = (from line in lineSet.Execute(fileString).Split('\n')
+                          where line.Length > 0
+                          select line).ToList();
+          //var lineCompare = (from line in lineSet.Execute(fileString).Split('\n')
+          //                   where line.Length > 0
+          //                   select Encoding.UTF8.GetBytes(line)).ToArray();
 
           using (var md5Hash = MD5.Create())
           {
             data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
-            foreach (var line in lineCompare)
-              data.lineHash.Add(BitConverter.ToString(md5Hash.ComputeHash(line)));
+            //foreach (var line in lineCompare)
+            //  data.lineHash.Add(BitConverter.ToString(md5Hash.ComputeHash(line)));
           }
           data.parsed = true;
         }
@@ -95,6 +99,24 @@ namespace RefactorMuch.Parse
     public int CompareTo(FileCompareData other) => absolutePath.CompareTo(other.absolutePath);
     public FileCompareData SmallerLocalPath(FileCompareData other) => localPath.Length < other.localPath.Length ? this : other;
     public bool DifferentLocalFile(FileCompareData right) => !name.Equals(right.name) || !hash.Equals(right.hash) || !localPath.Equals(right.localPath);
+
+    public int CrossCompareFiles(FileCompareData right)
+    {
+      if (string.Compare(extension, right.extension, true) != 0)
+        return 0;
+
+      SortedSet<string> leftHashes = new SortedSet<string>();
+      foreach (var line in lineHash)
+        leftHashes.Add(line);
+
+      int equals = 0;
+      foreach (var line in right.lineHash)
+        if (leftHashes.Contains(line))
+          ++equals;
+
+      return equals * 100 / Math.Max(lineHash.Count, right.lineHash.Count);
+    }
+
   }
 }
 

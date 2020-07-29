@@ -2,6 +2,9 @@
   "lastLeft": "",
   "lastRight": "",
   "lastItems": [],
+  "fileFilters": {
+    "extensions": ["*.cs", "*.unity", "*.prefab"]
+  },
   "tools": [
     {
       "type": "Diff",

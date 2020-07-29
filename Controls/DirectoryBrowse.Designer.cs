@@ -163,13 +163,14 @@
       // 
       this.taskProgress1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-      this.taskProgress1.CurrentTask = "No task";
-      this.taskProgress1.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-      this.taskProgress1.Location = new System.Drawing.Point(3, 630);
-      this.taskProgress1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+      this.taskProgress1.CurrentTask = "Idle";
+      this.taskProgress1.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F);
+      this.taskProgress1.Information = "";
+      this.taskProgress1.Location = new System.Drawing.Point(6, 629);
+      this.taskProgress1.Margin = new System.Windows.Forms.Padding(2, 1, 2, 1);
       this.taskProgress1.Name = "taskProgress1";
       this.taskProgress1.PercentDone = 0;
-      this.taskProgress1.Size = new System.Drawing.Size(574, 33);
+      this.taskProgress1.Size = new System.Drawing.Size(571, 34);
       this.taskProgress1.Style = System.Windows.Forms.ProgressBarStyle.Blocks;
       this.taskProgress1.TabIndex = 13;
       // 
