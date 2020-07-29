@@ -12,6 +12,7 @@ namespace RefactorMuch.Parse
       public CrossCompareSet Refactored;
       public Dictionary<string, FileCompareData> Files;
       public SortedSet<FileCompareData> AllFiles = new SortedSet<FileCompareData>();
+      public SortedSet<FileCompareData> EmptyFiles;
     }
   }
 }

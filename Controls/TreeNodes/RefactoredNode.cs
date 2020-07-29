@@ -1,6 +1,4 @@
 ﻿using RefactorMuch.Parse;
-using System;
-using System.Runtime.Remoting.Contexts;
 using System.Windows.Forms;
 
 namespace RefactorMuch.Controls.TreeNodes
@@ -9,7 +7,7 @@ namespace RefactorMuch.Controls.TreeNodes
   {
     public RefactoredNode(CrossCompare compare, int imageIndex) : base(compare, imageIndex)
     {
-      Text = $"{Math.Round(compare.similarity * 100, 0):00}%: {compare.left.name} => {compare.right.name} ({compare.left.localPath} => {compare.right.localPath})";
+      Text = $"{compare.similarity:00}%: {compare.left.name} => {compare.right.name} ({compare.left.localPath} => {compare.right.localPath})";
     }
 
     private static ContextMenuStrip menuStrip = null;

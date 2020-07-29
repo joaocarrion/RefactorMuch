@@ -8,7 +8,7 @@ namespace RefactorMuch.Parse
 {
   public class CrossCompare : IComparable<CrossCompare>
   {
-    public float similarity;
+    public int similarity;
     public FileCompareData left;
     public FileCompareData right;
 
@@ -23,10 +23,10 @@ namespace RefactorMuch.Parse
       this.right = rData;
 
       CreateCompareString();
-      CrossCompareFiles();
+      similarity = this.left.CrossCompareFiles(this.right);
     }
 
-    public CrossCompare(FileCompareData left, FileCompareData right, float similarity)
+    public CrossCompare(FileCompareData left, FileCompareData right, int similarity)
     {
       var lData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? left : right;
       var rData = left.absolutePath.Contains(DirectoryBrowse.LeftPath) ? right : left;
@@ -36,20 +36,6 @@ namespace RefactorMuch.Parse
       this.similarity = similarity;
 
       CreateCompareString();
-    }
-
-    private void CrossCompareFiles()
-    {
-      SortedSet<string> leftHashes = new SortedSet<string>();
-      foreach (var line in left.lineHash)
-        leftHashes.Add(line);
-
-      int equals = 0;
-      foreach (var line in right.lineHash)
-        if (leftHashes.Contains(line))
-          ++equals;
-
-      similarity = (float)equals / (float)Math.Max(left.lineHash.Count, right.lineHash.Count);
     }
 
     private void CreateCompareString()
@@ -75,6 +61,6 @@ namespace RefactorMuch.Parse
     }
     public override bool Equals(object obj) => ((CrossCompare)obj).compareString.Equals(compareString);
     public override int GetHashCode() => compareString.GetHashCode();
-    public override string ToString() => $"Similarity {Math.Round(similarity * 100, 0):0}%, Left: {left.name,-25}, Right: {right.name,-25}, Local Path: {left.localPath} ";
+    public override string ToString() => $"Similarity {similarity:00}%, Left: {left.name,-25}, Right: {right.name,-25}, Local Path: {left.localPath} ";
   }
 }

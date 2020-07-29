@@ -36,7 +36,6 @@
       this.directoryBrowse1.Dock = System.Windows.Forms.DockStyle.Fill;
       this.directoryBrowse1.Location = new System.Drawing.Point(0, 0);
       this.directoryBrowse1.Name = "directoryBrowse1";
-      this.directoryBrowse1.OnFinishedParsing = null;
       this.directoryBrowse1.Size = new System.Drawing.Size(809, 736);
       this.directoryBrowse1.TabIndex = 0;
       // 
