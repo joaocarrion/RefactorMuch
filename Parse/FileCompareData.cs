@@ -24,15 +24,15 @@ namespace RefactorMuch.Parse
 
     public int LineCount => lineHash.Length;
 
-    public IEnumerable<string> CodeLines => from line in lineHash select line.line;
+    public IEnumerable<string> CodeLines => codeLines;
 
-    private LineCompare[] lineHash;// = new List<string>();
+    private string[] codeLines;
+    private LineCompare[] lineHash = new LineCompare[0];
 
     private static object setLock = new object();
     private static Dictionary<string, RuleSet> ruleSets = null;
     private static RuleSet fullSet = null;
     private static RuleSet lineSet = null;
-    private static RuleSet normalizeSet = null;
 
     protected FileCompareData() { }
 
@@ -44,10 +44,8 @@ namespace RefactorMuch.Parse
         if (ruleSets == null)
           ruleSets = RuleSet.FromConfiguration();
 
-        fullSet = ruleSets["FileCompare"];
-        lineSet = ruleSets["LineCompare"];
-        if (ruleSets.ContainsKey("Normalize"))
-          normalizeSet = ruleSets["Normalize"];
+        fullSet = ruleSets["preFileCompare"];
+        lineSet = ruleSets["preLineCompare"];
       }
     }
 
@@ -69,21 +67,20 @@ namespace RefactorMuch.Parse
         using (var sr = new StreamReader(File.OpenRead(file), true))
         {
           var fileString = sr.ReadToEnd();
-          if (normalizeSet != null)
-            fileString = normalizeSet.Execute(fileString);
-
           var fullCompare = Encoding.UTF8.GetBytes(fullSet.Execute(fileString));
-          using (var md5Hash = MD5.Create())
+          data.codeLines = fileString.Split('\n');
+          if (fullCompare.Length > 0)
           {
-            if (fullCompare.Length == 0)
-              data.empty = true;
-            else
+            var lineCompare = lineSet.Execute(fileString).Split('\n');
+            using (var md5Hash = MD5.Create())
+            {
               data.hash = BitConverter.ToString(md5Hash.ComputeHash(fullCompare));
-
-            data.lineHash = (from line in fileString.Split('\n')
-                             where line.Length > 0
-                             select new LineCompare(line)).ToArray();
+              data.lineHash = (from line in lineCompare
+                               where line.Length > 0
+                               select new LineCompare(line)).ToArray();
+            }
           }
+          else data.empty = true;
           data.parsed = true;
         }
       }

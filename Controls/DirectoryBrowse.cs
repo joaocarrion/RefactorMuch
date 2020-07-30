@@ -6,13 +6,10 @@ using RefactorMuch.Parse;
 using RefactorMuch.Util;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -193,10 +190,15 @@ namespace RefactorMuch
       });
 
       Task.WaitAll(tasks);
+      treeView1.BeginUpdate();
       foreach (var t in tasks)
-        treeView1.Nodes[0].Nodes.Add(t.Result);
+      {
+        if (t.Result.Nodes.Count > 0)
+          treeView1.Nodes[0].Nodes.Add(t.Result);
+      }
 
       treeView1.Nodes[0].Nodes.Add(AddUnlisted());
+      treeView1.EndUpdate();
 
       processTime.Stop();
       taskProgress1.Information = $"Processed in {processTime.ElapsedMilliseconds} ms";
@@ -261,9 +263,7 @@ namespace RefactorMuch
       // add file nodes
       foreach (var file in data)
       {
-        lock (unlisted)
-          unlisted.Remove(file);
-
+        lock (unlisted) unlisted.Remove(file);
         duplicatePath[file.localPath].Nodes.Add(new FileDataNode(file, 1));
       }
 
@@ -285,7 +285,11 @@ namespace RefactorMuch
 
       Task.WhenAll(tasks);
       foreach (var t in tasks)
-        root.Nodes.Add(t.Result);
+      {
+        var node = t.Result;
+        if (node.Nodes.Count > 0)
+          root.Nodes.Add(t.Result);
+      }
 
       return root;
     }
@@ -353,26 +357,13 @@ namespace RefactorMuch
       }
     }
 
-    private FileCompareData Find(string filename, Dictionary<string, FileCompareData> dictionary)
-    {
-      FileCompareData file;
-      dictionary.TryGetValue(filename, out file);
-      return file;
-    }
-
     private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
     {
       if (treeView1.SelectedNode is FileDataNode)
       {
-        SuspendLayout();
         filePreview.Clear();
         foreach (string line in (treeView1.SelectedNode as FileDataNode).CodeLines)
           filePreview.AppendText(line + "\n");
-
-        filePreview.SelectAll();
-        filePreview.SelectionIndent = 24;
-        filePreview.DeselectAll();
-        ResumeLayout();
       }
     }
   }

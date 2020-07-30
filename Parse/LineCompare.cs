@@ -8,25 +8,22 @@ namespace RefactorMuch.Parse
     {
       public long hash = 0;
       public string line;
-      public string compareLine;
-      public bool EmptyLine => compareLine.Length == 0;
+      public bool EmptyLine => line.Length == 0;
 
       public LineCompare(string line)
       {
-        compareLine = lineSet.Execute(line);
-        if (compareLine.Length == 0)
+        this.line = line;
+        if (this.line.Length == 0)
           hash = -1;
         else
-          foreach (var c in compareLine)
+          foreach (var c in this.line)
             hash += c;
-
-        this.line = line;
       }
 
       public int CompareTo(LineCompare right)
       {
         if (hash == right.hash)
-          return string.Compare(compareLine, right.compareLine);
+          return string.Compare(line, right.line);
         else
           return hash < right.hash ? -1 : 1;
       }

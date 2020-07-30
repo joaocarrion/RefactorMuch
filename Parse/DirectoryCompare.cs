@@ -127,7 +127,7 @@ namespace RefactorMuch.Parse
       totalCrossCompare = 0;
     }
 
-    private Task AddToSet(string name, CrossCompareSet set, FileCompareData left, FileCompareData right, int similarity = -1)
+    private Task AddToSet(CrossCompareSet set, FileCompareData left, FileCompareData right, int similarity = -1)
     {
       return Task.Run(() =>
       {
@@ -151,22 +151,22 @@ namespace RefactorMuch.Parse
         else
           foreach (var right in set.AllFiles)
           {
-            if (right.LineCount== 0) continue;
+            if (right.LineCount == 0) continue;
             if (left != right && !left.Equals(right))
               if (left.name == right.name)
                 // same name
                 if (left.hash == right.hash)
                   // local folder must be different
-                  tasks.Add(AddToSet("self.duplicates", set.Duplicates, left, right, 100));
+                  tasks.Add(AddToSet(set.Duplicates, left, right, 100));
                 else
                   // local folder must be different, however, the file has the same name... duplicate?
-                  tasks.Add(AddToSet("self.cross", CrossSet, left, right));
+                  tasks.Add(AddToSet(CrossSet, left, right));
               else if (left.hash == right.hash)
                 // renamed?
-                tasks.Add(AddToSet("self.renamed", RefactoredLeft, left, right, 100));
+                tasks.Add(AddToSet(RefactoredLeft, left, right, 100));
               else
                 // cross compare all files for similatiries
-                tasks.Add(AddToSet("self.refactor", set.Refactored, left, right));
+                tasks.Add(AddToSet(set.Refactored, left, right));
           }
       }
 
@@ -186,28 +186,28 @@ namespace RefactorMuch.Parse
               // same path
               if (left.hash == right.hash)
                 // exact match
-                tasks.Add(AddToSet("other.unchanged", UnchangedFileSet, left, right, 100));
+                tasks.Add(AddToSet(UnchangedFileSet, left, right, 100));
               else
                 // matching names and folders
-                tasks.Add(AddToSet("other.changed", ChangedSet, left, right));
+                tasks.Add(AddToSet(ChangedSet, left, right));
             // same name, different path
             else if (left.hash == right.hash)
               // moved
-              tasks.Add(AddToSet("other.moved", MovedSet, left, right, 100));
+              tasks.Add(AddToSet(MovedSet, left, right, 100));
             else
               // moved and changed (probably)
-              tasks.Add(AddToSet("other.changed2", ChangedSet, left, right));
+              tasks.Add(AddToSet(ChangedSet, left, right));
           else if (left.hash == right.hash)
             // same file, different names
             if (left.localPath == right.localPath)
               // renamed
-              tasks.Add(AddToSet("other.renamed", RenamedSet, left, right, 100));
+              tasks.Add(AddToSet(RenamedSet, left, right, 100));
             else
               // moved
-              tasks.Add(AddToSet("other.moved2", MovedSet, left, right, 100));
+              tasks.Add(AddToSet(MovedSet, left, right, 100));
           else
             // different names, different files, check for refactor
-            tasks.Add(AddToSet("other.cross2", CrossSet, left, right));
+            tasks.Add(AddToSet(CrossSet, left, right));
         }
       }
 

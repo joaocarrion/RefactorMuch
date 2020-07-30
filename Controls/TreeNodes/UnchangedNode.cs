@@ -6,7 +6,7 @@ namespace RefactorMuch.Controls.TreeNodes
   {
     public UnchangedNode(CrossCompare compare, int imageIndex) : base(compare, imageIndex)
     {
-      Text = $"{compare.left.name} renamed {compare.right.name} => {compare.left.localPath}";
+      Text = $"{compare.left.name} => {compare.left.localPath}";
     }
   }
 }

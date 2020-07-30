@@ -3,7 +3,11 @@
   "lastRight": "",
   "lastItems": [],
   "fileFilters": {
-    "extensions": ["*.cs", "*.unity", "*.prefab"]
+    "extensions": [
+      "*.cs",
+      "*.unity",
+      "*.prefab"
+    ]
   },
   "tools": [
     {
@@ -19,63 +23,36 @@
   ],
   "comparisonRules": {
     "changed": [
-      { "extensions": ".cs", "minSimilarity": 70 },
-      { "extensions": ".prefab|.unity", "minSimilarity": 90 }
+      {
+        "extensions": ".cs",
+        "minSimilarity": 45
+      },
+      {
+        "extensions": ".prefab|.unity",
+        "minSimilarity": 92
+      }
     ]
   },
   "rules": [
     {
-      "name": "FileCompare",
-      "description": "Rules for comparing an entire file",
-      "extension": ".cs",
-      "rules": [
-        {
-          "name": "Block Comments",
-          "description": "Remove block comments",
-          "expression": "(\\/\\*)(.|\\n)*?(\\*\\/)"
-        },
-        {
-          "name": "Line Comments",
-          "description": "Remove line comments",
-          "expression": " *\\/\\/.*"
-        },
-        {
-          "name": "Syntax Breakers",
-          "description": "Remove syntax breakers",
-          "expression": " {2}|\\{|\\}|(\\r\\n)"
-        }
-      ]
-    },
-    {
-      "name": "LineCompare",
-      "description": "Rules for comparing an entire file",
-      "extension": ".cs",
-      "rules": [
-        {
-          "name": "Block Comments",
-          "description": "Remove block comments",
-          "expression": "(\\/\\*)(.|\\n)*?(\\*\\/)"
-        },
-        {
-          "name": "Line Comments",
-          "description": "Remove line comments",
-          "expression": " *\\/\\/.*"
-        },
-        {
-          "name": "Syntax Breakers",
-          "description": "Remove syntax breakers (leave \\n)",
-          "expression": " {2}|\\{|\\}|(\\r)"
-        }
-      ]
-    },
-    {
-      "name": "Normalize",
+      "name": "preFileCompare",
       "description": "Normalize files for comparison",
       "rules": [
         {
           "name": "Normalize",
           "description": "Normalize files for comparison",
-          "expression": "\\r"
+          "expression": "\\r|(\\/\\*)(.|\\n)*?(\\*\\/)| *\\/\\/.*| {2}|\\{|\\}|\\n"
+        }
+      ]
+    },
+    {
+      "name": "preLineCompare",
+      "description": "Normalize files for line comparison",
+      "rules": [
+        {
+          "name": "Normalize",
+          "description": "Normalize files for comparison",
+          "expression": "\\r|(\\/\\*)(.|\\n)*?(\\*\\/)| *\\/\\/.*| {2}|\\{|\\}"
         }
       ]
     }

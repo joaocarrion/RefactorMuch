@@ -74,6 +74,12 @@
   <ItemGroup>
     <Compile Include="Configuration\ConfigData.cs" />
     <Compile Include="Controls\DialogHelper.cs" />
+    <Compile Include="Controls\FormFix\BufferedRichText.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\FormFix\BufferedTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\TreeNodes\ChangedNode.cs" />
     <Compile Include="Controls\DirectoryBrowse.cs">
       <SubType>UserControl</SubType>

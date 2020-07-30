@@ -1,4 +1,8 @@
-﻿namespace RefactorMuch
+﻿using RefactorMuch.Controls.FormFix;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace RefactorMuch
 {
   partial class DirectoryBrowse
   {
@@ -39,11 +43,13 @@
       this.label3 = new System.Windows.Forms.Label();
       this.btSettings = new System.Windows.Forms.Button();
       this.updateProgress = new System.Windows.Forms.Timer(this.components);
-      this.treeView1 = new System.Windows.Forms.TreeView();
+      this.treeView1 = new RefactorMuch.Controls.FormFix.BufferedTreeView();
       this.imageList1 = new System.Windows.Forms.ImageList(this.components);
       this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-      this.filePreview = new System.Windows.Forms.RichTextBox();
+      this.filePreview = new RefactorMuch.Controls.FormFix.BufferedRichText();
       this.taskProgress1 = new RefactorMuch.Controls.TaskProgress();
+      this.previewOutside = new System.Windows.Forms.Panel();
+      this.previewInside = new System.Windows.Forms.Panel();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
       this.splitContainer1.Panel2.SuspendLayout();
@@ -176,18 +182,31 @@
       // 
       this.splitContainer1.Panel1.Controls.Add(this.treeView1);
       this.splitContainer1.Panel1MinSize = 350;
+      // preview outside
+      this.previewOutside.Size = new System.Drawing.Size(128, 128);
+      this.previewOutside.Controls.Add(this.previewInside);
+      this.previewInside.Location = new System.Drawing.Point(8, 8);
+      this.previewInside.Size = new System.Drawing.Size(112, 112);
+      this.previewInside.BackColor = Color.White;
+      this.previewInside.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
       // 
       // splitContainer1.Panel2
       // 
-      this.splitContainer1.Panel2.Controls.Add(this.filePreview);
+      this.splitContainer1.Panel2.Controls.Add(this.previewOutside);
       this.splitContainer1.Size = new System.Drawing.Size(1102, 556);
       this.splitContainer1.SplitterDistance = 350;
       this.splitContainer1.TabIndex = 15;
+      //
+      this.previewOutside.Dock = DockStyle.Fill;
+      this.previewOutside.BorderStyle = BorderStyle.Fixed3D;
+      this.previewInside.BorderStyle = BorderStyle.None;
+      this.previewInside.Controls.Add(this.filePreview);
       // 
       // filePreview
       // 
+      this.filePreview.BorderStyle = System.Windows.Forms.BorderStyle.None;
       this.filePreview.Dock = System.Windows.Forms.DockStyle.Fill;
-      this.filePreview.Font = new System.Drawing.Font("Lucida Console", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.filePreview.Font = new System.Drawing.Font("Courier New", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this.filePreview.Location = new System.Drawing.Point(0, 0);
       this.filePreview.Name = "filePreview";
       this.filePreview.Size = new System.Drawing.Size(748, 556);
@@ -247,9 +266,11 @@
     private System.Windows.Forms.Button btSettings;
     private Controls.TaskProgress taskProgress1;
     private System.Windows.Forms.Timer updateProgress;
-    private System.Windows.Forms.TreeView treeView1;
     private System.Windows.Forms.ImageList imageList1;
     private System.Windows.Forms.SplitContainer splitContainer1;
-    private System.Windows.Forms.RichTextBox filePreview;
+    private BufferedTreeView treeView1;
+    private BufferedRichText filePreview;
+    private Panel previewOutside;
+    private Panel previewInside;
   }
 }
